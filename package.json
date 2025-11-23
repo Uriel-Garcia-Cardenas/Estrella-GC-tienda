@@ -1,0 +1,16 @@
+{
+  "name": "estrella-gc-tienda",
+  "version": "1.0.0",
+  "description": "Este es el sitio web de la tienda ESTRELLA G&C, una tienda en línea de abarrotes y productos diversos con panel de administración.",
+  "main": "subirProductos.js",
+  "type": "commonjs",
+  "scripts": {
+    "star": "node js/subirProductos.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "firebase": "^8.10.1"
+  }
+}

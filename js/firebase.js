@@ -20,8 +20,8 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 // Configuración de Mercado Pago
-const MP_PUBLIC_KEY = "APP_USR-d976c632-8382-4478-93af-56ba56f5cc04"; // Reemplaza con tu public key
-const MP_ACCESS_TOKEN = "APP_USR-3920805619006894-102921-4bcfab76bf042ff09ec2647d80ee5e11-2955353614"; // Reemplaza con tu access token
+const MP_PUBLIC_KEY = ""; // Reemplaza con tu public key
+const MP_ACCESS_TOKEN = ""; // Reemplaza con tu access token
 
 // Función para obtener los productos desde Firebase
 async function obtenerProductos() {

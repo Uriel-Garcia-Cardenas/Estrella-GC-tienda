@@ -403,13 +403,58 @@ async function finalizarPedidoSucursal(pedido, pedidoId) {
 
   await db.collection("pagos").add(pagoData);
 
-  // Mostrar resumen
+  // Mostrar resumen con opción de ticket
   mostrarResumenCompra(pedido, pedidoId, 'sucursal');
   enviarWhatsApp(pedido, pedidoId);
+  
+  // Mostrar ticket
+  setTimeout(() => {
+    ticketGenerator.mostrarTicketModal(pedido, pedidoId);
+  }, 1000);
   
   // Limpiar carrito
   carrito = [];
   actualizarCarrito();
+}
+
+// Modificar la función mostrarResumenCompra para incluir botón de ticket
+function mostrarResumenCompra(pedido, pedidoId, metodoPago) {
+  const resumenHTML = `
+    <div class="alert alert-success">
+      <h5>¡${metodoPago === 'sucursal' ? 'Pedido realizado con éxito!' : 'Redirigiendo a pago...'}!</h5>
+      <p>Gracias por tu compra, ${pedido.cliente.nombre}.</p>
+      <p>Número de pedido: <strong>${pedidoId}</strong></p>
+      <p>Total: <strong>$${(pedido.total * 1.16).toFixed(2)}</strong> (incluye IVA)</p>
+      <p>Método de pago: ${pedido.metodoPago}</p>
+      <p>Tipo de entrega: ${pedido.metodoEntrega === 'domicilio' ? 'Entrega a domicilio' : 'Recolección en sucursal'}</p>
+      <p>Nos contactaremos al teléfono: <strong>${pedido.cliente.telefono}</strong></p>
+      
+      ${metodoPago === 'sucursal' ? 
+        `<div class="mt-3">
+          <button id="verTicketBtn" class="btn btn-primary">
+            <i class="fas fa-receipt me-1"></i> Ver Comprobante
+          </button>
+          <p class="mt-2"><strong>💰 Recuerda realizar tu pago en sucursal</strong></p>
+        </div>` : 
+        '<p class="mt-2"><strong>🔗 Serás redirigido a Mercado Pago para completar tu pago...</strong></p>'
+      }
+    </div>
+  `;
+  
+  document.getElementById('resumenCompra').innerHTML = resumenHTML;
+  
+  // Agregar event listener al botón de ver ticket
+  if (metodoPago === 'sucursal') {
+    document.getElementById('verTicketBtn').addEventListener('click', () => {
+      ticketGenerator.mostrarTicketModal(pedido, pedidoId);
+    });
+  }
+  
+  if (metodoPago === 'sucursal') {
+    setTimeout(() => {
+      limpiarFormularioYCerrar();
+    }, 10000);
+  }
 }
 
 // Función para mostrar resumen de compra
@@ -486,3 +531,21 @@ function limpiarFormularioYCerrar() {
   actualizarCarrito();
   cargarProductos();
 });
+
+// En script.js, después de las funciones existentes
+function procesarExitoPago(pedidoId, metodoPago) {
+  // Obtener el pedido completo desde Firebase
+  db.collection("pedidos").doc(pedidoId).get().then((doc) => {
+    if (doc.exists) {
+      const pedido = { id: pedidoId, ...doc.data() };
+      
+      // Mostrar resumen con ticket
+      mostrarResumenCompra(pedido, pedidoId, metodoPago);
+      
+      // Mostrar ticket después de un breve delay
+      setTimeout(() => {
+        ticketGenerator.mostrarTicketModal(pedido, pedidoId);
+      }, 1500);
+    }
+  });
+}

@@ -7965,6 +7965,15 @@ const productos = [
     "descripcion": "PASTILLA TEMPRA",
     "stock": 10,
     "destacado": false
+  },
+   {
+    "nombre": "REAL 95g SKIN CARE",
+    "precio": 17.00,
+    "categoria": "cuidado_personal",
+    "imagen": "logo.png",
+    "descripcion": "CREMA PARA TODO TIPO DE PIEL",
+    "stock": 10,
+    "destacado": false
   }
 ]
 

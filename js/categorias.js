@@ -244,7 +244,8 @@ crearCardProducto(producto) {
     <div class="col">
       <div class="card h-100 tarjeta">
         <img src="img/${producto.imagen || 'placeholder.jpg'}" class="card-img-top" alt="${producto.nombre}" 
-             onerror="this.src='img/placeholder.jpg'">
+          loading="lazy"
+          onerror="this.src='img/placeholder.jpg'">
         <div class="card-body">
           <h3 class="card-title h5">${producto.nombre}</h3>
           <p class="card-text">${producto.descripcion || 'Sin descripción'}</p>

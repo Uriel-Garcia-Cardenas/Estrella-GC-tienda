@@ -271,7 +271,7 @@ function agregarEventListenersProductos() {
       // Inicializar manejador de categorías
       manejadorCategorias.extraerCategorias(productos);
       manejadorCategorias.renderizarCategorias();
-      manejadorCategorias.renderizarProductos();
+     // manejadorCategorias.renderizarProductos();
       
       // Configurar event listeners una sola vez
       agregarEventListenersProductos();

@@ -156,112 +156,216 @@ document.addEventListener('DOMContentLoaded', function() {
  // Agregar event listeners a los botones de productos (solo una vez)
 function agregarEventListenersProductos() {
   if (eventListenersAgregados) return;
-  
-  // Event listeners para inputs de cantidad personalizada
+
+  // Helper para actualizar precio total de productos por unidad
+  function actualizarPrecioUnidad(container) {
+    const span = container.querySelector('.cantidad-valor');
+    const cantidad = parseInt(span.textContent) || 1;
+    const card = container.closest('.card');
+    if (!card) return;
+    const btn = card.querySelector('.agregar');
+    if (!btn) return;
+    const precioUnitario = parseFloat(btn.getAttribute('data-precio'));
+    const total = precioUnitario * cantidad;
+    const precioElement = container.querySelector('.precio-calculado strong');
+    if (precioElement) {
+      precioElement.textContent = `$${total.toFixed(2)}`;
+    }
+  }
+
+  // --- 1. Manejo de botones + y - en las tarjetas ---
+  document.addEventListener('click', function(e) {
+    // Botón incrementar
+    if (e.target.classList.contains('btn-incrementar')) {
+      const container = e.target.closest('.cantidad-personalizada, .cantidad-unidad');
+      if (!container) return;
+      if (container.classList.contains('cantidad-personalizada')) {
+        const input = container.querySelector('.cantidad-input');
+        let val = parseFloat(input.value) || 0;
+        val = Math.min(val + 0.1, 10);
+        input.value = val.toFixed(1);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      } else if (container.classList.contains('cantidad-unidad')) {
+        const span = container.querySelector('.cantidad-valor');
+        let val = parseInt(span.textContent) || 1;
+        val++;
+        span.textContent = val;
+        actualizarPrecioUnidad(container);
+      }
+    }
+
+    // Botón decrementar
+    if (e.target.classList.contains('btn-decrementar')) {
+      const container = e.target.closest('.cantidad-personalizada, .cantidad-unidad');
+      if (!container) return;
+      if (container.classList.contains('cantidad-personalizada')) {
+        const input = container.querySelector('.cantidad-input');
+        let val = parseFloat(input.value) || 0;
+        val = Math.max(val - 0.1, 0.1);
+        input.value = val.toFixed(1);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      } else if (container.classList.contains('cantidad-unidad')) {
+        const span = container.querySelector('.cantidad-valor');
+        let val = parseInt(span.textContent) || 1;
+        if (val > 1) {
+          val--;
+          span.textContent = val;
+          actualizarPrecioUnidad(container);
+        }
+      }
+    }
+  });
+
+  // --- 2. Actualizar precio en tiempo real para productos por kg ---
   document.addEventListener('input', function(e) {
     if (e.target.classList.contains('cantidad-input')) {
       const input = e.target;
-      const precioBase = parseFloat(input.closest('.card').querySelector('.agregar').getAttribute('data-precio'));
+      const card = input.closest('.card');
+      if (!card) return;
+
+      const btn = card.querySelector('.agregar');
+      const precioBase = parseFloat(btn.getAttribute('data-precio'));
       const cantidad = parseFloat(input.value) || 0;
       const precioCalculado = precioBase * cantidad;
-      
-      const precioElement = input.closest('.cantidad-personalizada').querySelector('.precio-calculado strong');
-      precioElement.textContent = `$${precioCalculado.toFixed(2)}`;
-    }
-  });
 
-  // Usar event delegation para manejar clicks en productos (CÓDIGO EXISTENTE - MODIFICAR)
-  document.addEventListener('click', function(e) {
-    if (e.target.closest('.agregar')) {
-      const button = e.target.closest('.agregar');
-      if (button.disabled) return;
-      
-      const id = button.getAttribute('data-id');
-      const nombre = button.getAttribute('data-nombre');
-      const precioBase = parseFloat(button.getAttribute('data-precio'));
-      const esCantidadPersonalizada = button.getAttribute('data-cantidad-personalizada') === 'true';
-      
-      let cantidad = 1;
-      let precioFinal = precioBase;
-      
-      // Si es cantidad personalizada, obtener del input
-      if (esCantidadPersonalizada) {
-        const card = button.closest('.card');
-        const cantidadInput = card.querySelector('.cantidad-input');
-        cantidad = parseFloat(cantidadInput.value) || 1;
-        precioFinal = precioBase * cantidad;
-        
-        // Validar cantidad mínima
-        if (cantidad < 0.1) {
-          mostrarNotificacion('La cantidad mínima es 0.1 kg', 'warning');
-          return;
+      const precioContainer = input.closest('.cantidad-personalizada');
+      if (precioContainer) {
+        const precioElement = precioContainer.querySelector('.precio-calculado strong');
+        if (precioElement) {
+          precioElement.textContent = `$${precioCalculado.toFixed(2)}`;
         }
       }
-      
-      // Verificar si el producto ya está en el carrito
-      const productoExistente = carrito.find(p => p.id === id && p.cantidadPersonalizada === esCantidadPersonalizada);
-      
-      if (productoExistente && !esCantidadPersonalizada) {
-        // Para productos normales, incrementar cantidad
-        productoExistente.cantidad++;
-      } else {
-        // Para productos nuevos o con cantidad personalizada, agregar nuevo item
-        carrito.push({ 
-          id, 
-          nombre, 
-          precio: precioFinal, 
-          cantidad: 1,
-          cantidadPersonalizada: esCantidadPersonalizada,
-          precioBase: precioBase,
-          cantidadPersonalizadaValor: esCantidadPersonalizada ? cantidad : null,
-          unidad: esCantidadPersonalizada ? 'kg' : 'unidad'
-        });
-      }
-      
-      actualizarCarrito();
-      
-      // Mostrar notificación
-      const mensaje = esCantidadPersonalizada 
-        ? `${nombre} (${cantidad} kg) agregado al carrito - $${precioFinal.toFixed(2)}`
-        : `${nombre} agregado al carrito`;
-      mostrarNotificacion(mensaje);
     }
   });
-  
+
+  // --- 3. Evento principal: agregar al carrito con efecto visual y validación de stock ---
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.agregar');
+    if (!btn || btn.disabled) return;
+
+    // Efecto visual (cambio a verde)
+    btn.classList.add('agregar-clicked');
+    setTimeout(() => btn.classList.remove('agregar-clicked'), 200);
+
+    const id = btn.getAttribute('data-id');
+    const nombre = btn.getAttribute('data-nombre');
+    const precioBase = parseFloat(btn.getAttribute('data-precio'));
+    const esCantidadPersonalizada = btn.getAttribute('data-cantidad-personalizada') === 'true';
+
+    let cantidad = 1;
+    let precioFinal = precioBase;
+    const card = btn.closest('.card');
+
+    if (esCantidadPersonalizada) {
+      // Producto por kg
+      const cantidadInput = card.querySelector('.cantidad-input');
+      cantidad = parseFloat(cantidadInput.value) || 0;
+      if (cantidad < 0.1) {
+        mostrarNotificacion('La cantidad mínima es 0.1 kg', 'warning');
+        return;
+      }
+      precioFinal = precioBase * cantidad;
+    } else {
+      // Producto por unidad
+      const cantidadSpan = card.querySelector('.cantidad-valor');
+      if (cantidadSpan) {
+        cantidad = parseInt(cantidadSpan.textContent) || 1;
+      }
+      precioFinal = precioBase; // precio unitario
+    }
+
+    // ----- VALIDACIÓN DE STOCK -----
+    const productoOriginal = manejadorCategorias.productos.find(p => p.id === id);
+    if (!productoOriginal) {
+      mostrarNotificacion('Producto no encontrado', 'warning');
+      return;
+    }
+    const stockDisponible = productoOriginal.stock || 0;
+
+    if (esCantidadPersonalizada) {
+      if (cantidad > stockDisponible) {
+        mostrarNotificacion(`Stock insuficiente. Solo hay ${stockDisponible} kg disponibles.`, 'warning');
+        return;
+      }
+    } else {
+      if (cantidad > stockDisponible) {
+        mostrarNotificacion(`Stock insuficiente. Solo hay ${stockDisponible} unidades disponibles.`, 'warning');
+        return;
+      }
+    }
+    // ----- FIN VALIDACIÓN -----
+
+    // Buscar producto existente en el carrito
+    const productoExistente = carrito.find(p => p.id === id && p.cantidadPersonalizada === esCantidadPersonalizada);
+
+    if (productoExistente && !esCantidadPersonalizada) {
+      // Producto normal: sumar cantidad
+      productoExistente.cantidad += cantidad;
+    } else if (productoExistente && esCantidadPersonalizada) {
+      // Producto por kg: se agrega como ítem separado
+      carrito.push({
+        id, nombre, precio: precioFinal, cantidad: 1,
+        cantidadPersonalizada: true,
+        precioBase: precioBase,
+        cantidadPersonalizadaValor: cantidad,
+        unidad: 'kg'
+      });
+    } else {
+      // Producto nuevo
+      carrito.push({
+        id, nombre,
+        precio: esCantidadPersonalizada ? precioFinal : precioBase,
+        cantidad: esCantidadPersonalizada ? 1 : cantidad,
+        cantidadPersonalizada: esCantidadPersonalizada,
+        precioBase: esCantidadPersonalizada ? precioBase : null,
+        cantidadPersonalizadaValor: esCantidadPersonalizada ? cantidad : null,
+        unidad: esCantidadPersonalizada ? 'kg' : 'unidad'
+      });
+    }
+
+    actualizarCarrito();
+
+    // Mostrar notificación
+    const mensaje = esCantidadPersonalizada
+      ? `${nombre} (${cantidad} kg) agregado al carrito - $${precioFinal.toFixed(2)}`
+      : `${nombre} x${cantidad} agregado al carrito`;
+    mostrarNotificacion(mensaje, 'success');
+  });
+
   eventListenersAgregados = true;
 }
-
   // Función para mostrar notificaciones
-  function mostrarNotificacion(mensaje) {
-    // Eliminar notificación anterior si existe
-    const toastAnterior = document.querySelector('.toast-container');
-    if (toastAnterior) {
-      toastAnterior.remove();
-    }
-    
-    const toastContainer = document.createElement('div');
-    toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
-    toastContainer.innerHTML = `
-      <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="toast-header">
-          <strong class="me-auto">Producto agregado</strong>
-          <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-        <div class="toast-body">
-          ${mensaje}
-        </div>
- </div>
-    `;
-    
-    document.body.appendChild(toastContainer);
-    
-    // Eliminar la notificación después de 3 segundos
-    setTimeout(() => {
-      if (toastContainer.parentNode) {
-        toastContainer.remove();
-      }
-    }, 3000);
+  function mostrarNotificacion(mensaje, tipo = 'success') {
+  // Eliminar notificación anterior si existe
+  const toastAnterior = document.querySelector('.toast-container');
+  if (toastAnterior) {
+    toastAnterior.remove();
   }
+  
+  const toastContainer = document.createElement('div');
+  toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+  toastContainer.style.zIndex = '9999';
+  toastContainer.innerHTML = `
+    <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="toast-header bg-${tipo} text-white">
+        <strong class="me-auto">Producto agregado</strong>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+      <div class="toast-body">
+        ${mensaje}
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(toastContainer);
+  
+  // Eliminar la notificación después de 3 segundos
+  setTimeout(() => {
+    if (toastContainer.parentNode) {
+      toastContainer.remove();
+    }
+  }, 3000);
+}
 
   // Cargar productos desde Firebase
   async function cargarProductos() {

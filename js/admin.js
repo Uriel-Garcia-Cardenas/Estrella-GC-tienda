@@ -1,4 +1,4 @@
-// js/admin.js - Versión corregida con carga por categorías
+// js/admin.js carga por categorías
 class AdminManager {
     constructor() {
         this.pedidos = [];
@@ -56,7 +56,7 @@ class AdminManager {
         // Filtro de categoría de productos - AHORA CARGA DESDE FIREBASE
         document.getElementById('filtroCategoria').addEventListener('change', async (e) => {
             this.filtroCategoria = e.target.value;
-            await this.cargarProductosPorCategoria(); // Cambiar esto
+            await this.cargarProductosPorCategoria(); 
         });
 
         // Guardar producto
@@ -79,7 +79,7 @@ class AdminManager {
     }
       
         
-// ✅ NUEVA FUNCIÓN: Ver pagos del pedido (AGREGA ESTA FUNCIÓN COMPLETA)
+//  NUEVA FUNCIÓN: Ver pagos del pedido 
 async verPagosPedido(pedidoId) {
   try {
     const pagos = await fb.obtenerPagosPorPedido(pedidoId);
@@ -358,25 +358,71 @@ async verPagosPedido(pedidoId) {
     }
 
     async actualizarEstadoPedido(pedidoId, nuevoEstado) {
-        try {
-            await fb.actualizarEstadoPedido(pedidoId, nuevoEstado);
-            
-            const pedido = this.pedidos.find(p => p.id === pedidoId);
-            if (pedido) {
-                pedido.estado = nuevoEstado;
-                const badge = document.querySelector(`[data-pedido-id="${pedidoId}"]`).closest('.card').querySelector('.badge');
-                if (badge) {
-                    badge.className = `badge bg-${this.getBadgeColor(nuevoEstado)} mb-2 d-block`;
-                    badge.textContent = nuevoEstado;
-                }
-            }
-            
-            this.mostrarMensaje('Estado actualizado correctamente', 'success');
-        } catch (error) {
-            console.error('Error actualizando estado:', error);
-            this.mostrarMensaje('Error al actualizar el estado', 'danger');
-        }
+  try {
+    // Obtener el pedido actual de la lista local
+    const pedido = this.pedidos.find(p => p.id === pedidoId);
+    if (!pedido) {
+      throw new Error('Pedido no encontrado');
     }
+    const estadoAnterior = pedido.estado;
+
+    // Actualizar estado en Firebase
+    await fb.actualizarEstadoPedido(pedidoId, nuevoEstado);
+    
+    // Si el estado cambió a "entregado" y no lo era antes, restar stock
+    if (nuevoEstado === 'entregado' && estadoAnterior !== 'entregado') {
+      await this.restarStockDePedido(pedido);
+      // Refrescar la lista de productos en el admin para mostrar stock actualizado
+      await this.cargarProductosPorCategoria();
+    }
+
+    // Actualizar estado en la lista local
+    pedido.estado = nuevoEstado;
+
+    // Actualizar la UI del badge
+    const badge = document.querySelector(`[data-pedido-id="${pedidoId}"]`).closest('.card').querySelector('.badge');
+    if (badge) {
+      badge.className = `badge bg-${this.getBadgeColor(nuevoEstado)} mb-2 d-block`;
+      badge.textContent = nuevoEstado;
+    }
+    
+    this.mostrarMensaje('Estado actualizado correctamente', 'success');
+  } catch (error) {
+    console.error('Error actualizando estado:', error);
+    this.mostrarMensaje('Error al actualizar el estado o stock: ' + error.message, 'danger');
+  }
+}
+    // Método para restar stock de un pedido cuando se entrega
+async restarStockDePedido(pedido) {
+  if (!pedido.productos || pedido.productos.length === 0) return;
+
+  for (const item of pedido.productos) {
+    // Determinar cantidad real (para productos por kg se usa cantidadPersonalizadaValor)
+    let cantidadReal = item.cantidad;
+    if (item.cantidadPersonalizada && item.cantidadPersonalizadaValor) {
+      cantidadReal = item.cantidadPersonalizadaValor;
+    }
+
+    try {
+      // Obtener el producto actual desde Firebase
+      const producto = await fb.obtenerProductoPorId(item.id);
+      if (!producto) {
+        console.error(`Producto ${item.id} no encontrado, no se puede descontar stock`);
+        continue;
+      }
+      const nuevoStock = (producto.stock || 0) - cantidadReal;
+      if (nuevoStock < 0) {
+        console.warn(`Stock negativo para ${item.nombre}, ajustando a 0`);
+        await fb.actualizarProducto(item.id, { stock: 0 });
+      } else {
+        await fb.actualizarProducto(item.id, { stock: nuevoStock });
+      }
+    } catch (error) {
+      console.error(`Error actualizando stock de ${item.id}:`, error);
+      throw error; // Detener el proceso si falla
+    }
+  }
+}
 
     renderizarProductos() {
         const container = document.getElementById('listaProductos');

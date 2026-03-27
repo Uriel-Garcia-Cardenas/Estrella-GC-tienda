@@ -43,6 +43,20 @@ async function obtenerProductos() {
   }
 }
 
+// Función para obtener un producto por su ID
+async function obtenerProductoPorId(id) {
+  try {
+    const doc = await db.collection("productos").doc(id).get();
+    if (doc.exists) {
+      return { id: doc.id, ...doc.data() };
+    }
+    return null;
+  } catch (error) {
+    console.error("Error obteniendo producto:", error);
+    throw error;
+  }
+}
+
 // En firebase.js - agregar estas funciones
 async function obtenerPedidosPaginados(limite = 10, ultimoDoc = null) {
     try {
@@ -320,24 +334,24 @@ async function obtenerPagosPorPedido(pedidoId) {
   }
 }
 
+
 // Exportar funciones para usar en otros archivos
 window.fb = {
   db,
   auth,
   obtenerProductos,
-  obtenerProductosPorCategoria, // <- AGREGAR ESTA LÍNEA
-  obtenerCategorias,           // <- AGREGAR ESTA LÍNEA
+  obtenerProductosPorCategoria,
+  obtenerCategorias,
   guardarPedido,
   obtenerPedidos,
   actualizarEstadoPedido,
   agregarProducto,
   actualizarProducto,
   eliminarProducto,
-  // Agregar estas nuevas funciones
   crearPreferenciaMercadoPago,
   verificarEstadoPago,
   obtenerPagosPorPedido,
-  // Constantes de Mercado Pago
+  obtenerProductoPorId, // <-- AÑADIR
   MP_PUBLIC_KEY,
   MP_ACCESS_TOKEN
 };

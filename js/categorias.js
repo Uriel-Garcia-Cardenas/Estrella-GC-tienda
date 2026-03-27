@@ -234,12 +234,41 @@ class ManejadorCategorias {
   // Crear card de producto (reutilizable)
   // Crear card de producto (reutilizable)
 crearCardProducto(producto) {
-  // Determinar si el producto necesita cantidad personalizada
   const categoriasCantidadPersonalizada = ['verduras', 'huevos', 'frutas', 'carnes'];
   const necesitaCantidadPersonalizada = categoriasCantidadPersonalizada.includes(producto.categoria);
-  
-  const precioPorUnidad = producto.precio; // Precio base por kg/lb/pieza
-  
+  const precioPorUnidad = producto.precio;
+
+  // Generar control de cantidad según tipo de producto
+  let controlCantidad = '';
+  if (necesitaCantidadPersonalizada) {
+    // Productos por peso (kg) con input decimal
+    controlCantidad = `
+      <div class="cantidad-personalizada mt-3">
+        <label class="form-label small">Cantidad (kg):</label>
+        <div class="input-group input-group-sm">
+          <button class="btn btn-outline-secondary btn-decrementar" type="button">-</button>
+          <input type="number" class="form-control text-center cantidad-input" data-id="${producto.id}" value="1" step="0.1" min="0.1">
+          <button class="btn btn-outline-secondary btn-incrementar" type="button">+</button>
+        </div>
+        <div class="precio-calculado mt-2">
+          <small class="text-muted">Total: <strong class="text-success">$${precioPorUnidad.toFixed(2)}</strong></small>
+        </div>
+      </div>
+    `;
+  } else {
+    // Productos por unidad con botones + / -
+    controlCantidad = `
+      <div class="cantidad-unidad mt-3">
+        <label class="form-label small">Cantidad:</label>
+        <div class="input-group input-group-sm" style="width: 120px;">
+          <button class="btn btn-outline-secondary btn-decrementar" type="button">-</button>
+          <span class="form-control text-center cantidad-valor" style="background-color: white;">1</span>
+          <button class="btn btn-outline-secondary btn-incrementar" type="button">+</button>
+        </div>
+      </div>
+    `;
+  }
+
   return `
     <div class="col">
       <div class="card h-100 tarjeta">
@@ -252,19 +281,7 @@ crearCardProducto(producto) {
           <p class="price">$${precioPorUnidad.toFixed(2)} ${necesitaCantidadPersonalizada ? 'por kg' : ''}</p>
           ${producto.stock < 5 ? '<span class="badge bg-warning">Poco stock</span>' : ''}
           ${producto.destacado ? '<span class="badge bg-success">Destacado</span>' : ''}
-          
-          ${necesitaCantidadPersonalizada ? `
-            <div class="cantidad-personalizada mt-3">
-              <label class="form-label small">Cantidad deseada:</label>
-              <div class="input-group input-group-sm">
-                <input type="number" class="form-control cantidad-input" data-id="${producto.id}" placeholder="Ej: 0.5"step="0.1"min="0.1"value="1">
-                <span class="input-group-text">kg</span>
-              </div>
-              <div class="precio-calculado mt-2">
-                <small class="text-muted">Total: <strong class="text-success">$${precioPorUnidad.toFixed(2)}</strong></small>
-              </div>
-            </div>
-          ` : ''}
+          ${controlCantidad}
         </div>
         <div class="card-footer bg-transparent">
           <button class="btn agregar w-100" 

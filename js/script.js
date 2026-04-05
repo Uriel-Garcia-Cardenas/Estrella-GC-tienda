@@ -29,7 +29,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     mensaje += `*PRODUCTOS:*%0A`;
     pedido.productos.forEach((producto, index) => {
-      mensaje += `${index + 1}. ${producto.nombre} - Cantidad: ${producto.cantidad} - $${(producto.precio * producto.cantidad).toFixed(2)}%0A`;
+      const cantidad = producto.cantidadPersonalizada ? producto.cantidadPersonalizadaValor : producto.cantidad;
+      const unidad = producto.unidad || (producto.cantidadPersonalizada ? 'kg' : 'pz');
+      mensaje += `${index + 1}. ${producto.nombre} - Cantidad: ${cantidad} ${unidad} - $${(producto.precio * cantidad).toFixed(2)}%0A`;
     });
     
     mensaje += `%0A*TOTAL: $${pedido.total.toFixed(2)}*%0A%0A`;
@@ -78,51 +80,51 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
     
-     carrito.forEach((producto, index) => {
-    const subtotal = producto.precio * producto.cantidad;
-    total += subtotal;
+    carrito.forEach((producto, index) => {
+      const subtotal = producto.precio * producto.cantidad;
+      total += subtotal;
+      
+      const li = document.createElement('li');
+      li.className = 'list-group-item d-flex justify-content-between align-items-center';
+      
+      const infoProducto = producto.cantidadPersonalizada 
+        ? `
+            <div>
+              <h6 class="my-0">${producto.nombre}</h6>
+              <small class="text-muted">${producto.cantidadPersonalizadaValor} ${producto.unidad} × $${producto.precioBase.toFixed(2)}/${producto.unidad}</small>
+              ${producto.codigoBarras ? `<br><small class="text-muted font-monospace">Código: ${producto.codigoBarras}</small>` : ''}
+            </div>
+          `
+        : `
+            <div>
+              <h6 class="my-0">${producto.nombre}</h6>
+              <small class="text-muted">$${producto.precio.toFixed(2)} c/u</small>
+              ${producto.codigoBarras ? `<br><small class="text-muted font-monospace">Código: ${producto.codigoBarras}</small>` : ''}
+            </div>
+          `;
+      
+      li.innerHTML = `
+        ${infoProducto}
+        <div class="cantidad-control d-flex align-items-center">
+          ${!producto.cantidadPersonalizada ? `
+            <button class="btn btn-sm btn-outline-secondary me-2 decrementar" data-index="${index}">-</button>
+            <span class="mx-2">${producto.cantidad}</span>
+            <button class="btn btn-sm btn-outline-secondary ms-2 incrementar" data-index="${index}">+</button>
+          ` : `
+            <span class="mx-2">${producto.cantidad}</span>
+          `}
+          <button class="btn btn-sm btn-danger ms-3 eliminar" data-index="${index}">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+        <span class="badge bg-primary rounded-pill">$${subtotal.toFixed(2)}</span>
+      `;
+      
+      listaCarrito.appendChild(li);
+    });
     
-    const li = document.createElement('li');
-    li.className = 'list-group-item d-flex justify-content-between align-items-center';
+    totalCarrito.textContent = `$${total.toFixed(2)}`;
     
-    // Mostrar información diferente para productos con cantidad personalizada
-    const infoProducto = producto.cantidadPersonalizada 
-      ? `
-          <div>
-            <h6 class="my-0">${producto.nombre}</h6>
-            <small class="text-muted">${producto.cantidadPersonalizadaValor} ${producto.unidad} × $${producto.precioBase.toFixed(2)}/${producto.unidad}</small>
-          </div>
-        `
-      : `
-          <div>
-            <h6 class="my-0">${producto.nombre}</h6>
-            <small class="text-muted">$${producto.precio.toFixed(2)} c/u</small>
-          </div>
-        `;
-    
-    li.innerHTML = `
-      ${infoProducto}
-      <div class="cantidad-control d-flex align-items-center">
-        ${!producto.cantidadPersonalizada ? `
-          <button class="btn btn-sm btn-outline-secondary me-2 decrementar" data-index="${index}">-</button>
-          <span class="mx-2">${producto.cantidad}</span>
-          <button class="btn btn-sm btn-outline-secondary ms-2 incrementar" data-index="${index}">+</button>
-        ` : `
-          <span class="mx-2">${producto.cantidad}</span>
-        `}
-        <button class="btn btn-sm btn-danger ms-3 eliminar" data-index="${index}">
-          <i class="fas fa-trash"></i>
-        </button>
-      </div>
-      <span class="badge bg-primary rounded-pill">$${subtotal.toFixed(2)}</span>
-    `;
-    
-    listaCarrito.appendChild(li);
-  });
-  
-  totalCarrito.textContent = `$${total.toFixed(2)}`;
-    
-    // Agregar event listeners a los botones del carrito
     document.querySelectorAll('.incrementar').forEach(btn => {
       btn.addEventListener('click', () => {
         const index = parseInt(btn.getAttribute('data-index'));
@@ -152,483 +154,479 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Agregar event listeners a los botones de productos (solo una vez)
- // Agregar event listeners a los botones de productos (solo una vez)
-function agregarEventListenersProductos() {
-  if (eventListenersAgregados) return;
+  // Agregar event listeners a los botones de productos
+  function agregarEventListenersProductos() {
+    if (eventListenersAgregados) return;
 
-  // Helper para actualizar precio total de productos por unidad
-  function actualizarPrecioUnidad(container) {
-    const span = container.querySelector('.cantidad-valor');
-    const cantidad = parseInt(span.textContent) || 1;
-    const card = container.closest('.card');
-    if (!card) return;
-    const btn = card.querySelector('.agregar');
-    if (!btn) return;
-    const precioUnitario = parseFloat(btn.getAttribute('data-precio'));
-    const total = precioUnitario * cantidad;
-    const precioElement = container.querySelector('.precio-calculado strong');
-    if (precioElement) {
-      precioElement.textContent = `$${total.toFixed(2)}`;
-    }
-  }
-
-  // --- 1. Manejo de botones + y - en las tarjetas ---
-  document.addEventListener('click', function(e) {
-    // Botón incrementar
-    if (e.target.classList.contains('btn-incrementar')) {
-      const container = e.target.closest('.cantidad-personalizada, .cantidad-unidad');
-      if (!container) return;
-      if (container.classList.contains('cantidad-personalizada')) {
-        const input = container.querySelector('.cantidad-input');
-        let val = parseFloat(input.value) || 0;
-        val = Math.min(val + 0.1, 10);
-        input.value = val.toFixed(1);
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-      } else if (container.classList.contains('cantidad-unidad')) {
-        const span = container.querySelector('.cantidad-valor');
-        let val = parseInt(span.textContent) || 1;
-        val++;
-        span.textContent = val;
-        actualizarPrecioUnidad(container);
+    function actualizarPrecioUnidad(container) {
+      const span = container.querySelector('.cantidad-valor');
+      const cantidad = parseInt(span.textContent) || 1;
+      const card = container.closest('.card');
+      if (!card) return;
+      const btn = card.querySelector('.agregar');
+      if (!btn) return;
+      const precioUnitario = parseFloat(btn.getAttribute('data-precio'));
+      const total = precioUnitario * cantidad;
+      const precioElement = container.querySelector('.precio-calculado strong');
+      if (precioElement) {
+        precioElement.textContent = `$${total.toFixed(2)}`;
       }
     }
 
-    // Botón decrementar
-    if (e.target.classList.contains('btn-decrementar')) {
-      const container = e.target.closest('.cantidad-personalizada, .cantidad-unidad');
-      if (!container) return;
-      if (container.classList.contains('cantidad-personalizada')) {
-        const input = container.querySelector('.cantidad-input');
-        let val = parseFloat(input.value) || 0;
-        val = Math.max(val - 0.1, 0.1);
-        input.value = val.toFixed(1);
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-      } else if (container.classList.contains('cantidad-unidad')) {
-        const span = container.querySelector('.cantidad-valor');
-        let val = parseInt(span.textContent) || 1;
-        if (val > 1) {
-          val--;
+    document.addEventListener('click', function(e) {
+      if (e.target.classList.contains('btn-incrementar')) {
+        const container = e.target.closest('.cantidad-personalizada, .cantidad-unidad');
+        if (!container) return;
+        if (container.classList.contains('cantidad-personalizada')) {
+          const input = container.querySelector('.cantidad-input');
+          let val = parseFloat(input.value) || 0;
+          val = Math.min(val + 0.1, 10);
+          input.value = val.toFixed(1);
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        } else if (container.classList.contains('cantidad-unidad')) {
+          const span = container.querySelector('.cantidad-valor');
+          let val = parseInt(span.textContent) || 1;
+          val++;
           span.textContent = val;
           actualizarPrecioUnidad(container);
         }
       }
-    }
-  });
 
-  // --- 2. Actualizar precio en tiempo real para productos por kg ---
-  document.addEventListener('input', function(e) {
-    if (e.target.classList.contains('cantidad-input')) {
-      const input = e.target;
-      const card = input.closest('.card');
-      if (!card) return;
-
-      const btn = card.querySelector('.agregar');
-      const precioBase = parseFloat(btn.getAttribute('data-precio'));
-      const cantidad = parseFloat(input.value) || 0;
-      const precioCalculado = precioBase * cantidad;
-
-      const precioContainer = input.closest('.cantidad-personalizada');
-      if (precioContainer) {
-        const precioElement = precioContainer.querySelector('.precio-calculado strong');
-        if (precioElement) {
-          precioElement.textContent = `$${precioCalculado.toFixed(2)}`;
+      if (e.target.classList.contains('btn-decrementar')) {
+        const container = e.target.closest('.cantidad-personalizada, .cantidad-unidad');
+        if (!container) return;
+        if (container.classList.contains('cantidad-personalizada')) {
+          const input = container.querySelector('.cantidad-input');
+          let val = parseFloat(input.value) || 0;
+          val = Math.max(val - 0.1, 0.1);
+          input.value = val.toFixed(1);
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        } else if (container.classList.contains('cantidad-unidad')) {
+          const span = container.querySelector('.cantidad-valor');
+          let val = parseInt(span.textContent) || 1;
+          if (val > 1) {
+            val--;
+            span.textContent = val;
+            actualizarPrecioUnidad(container);
+          }
         }
       }
-    }
-  });
+    });
 
-  // --- 3. Evento principal: agregar al carrito con efecto visual y validación de stock ---
-  document.addEventListener('click', function(e) {
-    const btn = e.target.closest('.agregar');
-    if (!btn || btn.disabled) return;
+    document.addEventListener('input', function(e) {
+      if (e.target.classList.contains('cantidad-input')) {
+        const input = e.target;
+        const card = input.closest('.card');
+        if (!card) return;
 
-    // Efecto visual (cambio a verde)
-    btn.classList.add('agregar-clicked');
-    setTimeout(() => btn.classList.remove('agregar-clicked'), 200);
+        const btn = card.querySelector('.agregar');
+        const precioBase = parseFloat(btn.getAttribute('data-precio'));
+        const cantidad = parseFloat(input.value) || 0;
+        const precioCalculado = precioBase * cantidad;
 
-    const id = btn.getAttribute('data-id');
-    const nombre = btn.getAttribute('data-nombre');
-    const precioBase = parseFloat(btn.getAttribute('data-precio'));
-    const esCantidadPersonalizada = btn.getAttribute('data-cantidad-personalizada') === 'true';
+        const precioContainer = input.closest('.cantidad-personalizada');
+        if (precioContainer) {
+          const precioElement = precioContainer.querySelector('.precio-calculado strong');
+          if (precioElement) {
+            precioElement.textContent = `$${precioCalculado.toFixed(2)}`;
+          }
+        }
+      }
+    });
 
-    let cantidad = 1;
-    let precioFinal = precioBase;
-    const card = btn.closest('.card');
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('.agregar');
+      if (!btn || btn.disabled) return;
 
-    if (esCantidadPersonalizada) {
-      // Producto por kg
-      const cantidadInput = card.querySelector('.cantidad-input');
-      cantidad = parseFloat(cantidadInput.value) || 0;
-      if (cantidad < 0.1) {
-        mostrarNotificacion('La cantidad mínima es 0.1 kg', 'warning');
+      btn.classList.add('agregar-clicked');
+      setTimeout(() => btn.classList.remove('agregar-clicked'), 200);
+
+      const id = btn.getAttribute('data-id');
+      const nombre = btn.getAttribute('data-nombre');
+      const precioBase = parseFloat(btn.getAttribute('data-precio'));
+      const esCantidadPersonalizada = btn.getAttribute('data-cantidad-personalizada') === 'true';
+      const codigoBarras = btn.getAttribute('data-codigo-barras') || '';
+
+      let cantidad = 1;
+      let precioFinal = precioBase;
+      const card = btn.closest('.card');
+
+      if (esCantidadPersonalizada) {
+        const cantidadInput = card.querySelector('.cantidad-input');
+        cantidad = parseFloat(cantidadInput.value) || 0;
+        if (cantidad < 0.1) {
+          mostrarNotificacion('La cantidad mínima es 0.1 kg', 'warning');
+          return;
+        }
+        precioFinal = precioBase * cantidad;
+      } else {
+        const cantidadSpan = card.querySelector('.cantidad-valor');
+        if (cantidadSpan) {
+          cantidad = parseInt(cantidadSpan.textContent) || 1;
+        }
+        precioFinal = precioBase;
+      }
+
+      const productoOriginal = manejadorCategorias?.productos?.find(p => p.id === id);
+      if (!productoOriginal) {
+        mostrarNotificacion('Producto no encontrado', 'warning');
         return;
       }
-      precioFinal = precioBase * cantidad;
-    } else {
-      // Producto por unidad
-      const cantidadSpan = card.querySelector('.cantidad-valor');
-      if (cantidadSpan) {
-        cantidad = parseInt(cantidadSpan.textContent) || 1;
+      const stockDisponible = productoOriginal.stock || 0;
+
+      if (esCantidadPersonalizada) {
+        if (cantidad > stockDisponible) {
+          mostrarNotificacion(`Stock insuficiente. Solo hay ${stockDisponible} kg disponibles.`, 'warning');
+          return;
+        }
+      } else {
+        if (cantidad > stockDisponible) {
+          mostrarNotificacion(`Stock insuficiente. Solo hay ${stockDisponible} unidades disponibles.`, 'warning');
+          return;
+        }
       }
-      precioFinal = precioBase; // precio unitario
-    }
 
-    // ----- VALIDACIÓN DE STOCK -----
-    const productoOriginal = manejadorCategorias.productos.find(p => p.id === id);
-    if (!productoOriginal) {
-      mostrarNotificacion('Producto no encontrado', 'warning');
-      return;
-    }
-    const stockDisponible = productoOriginal.stock || 0;
+      const productoExistente = carrito.find(p => p.id === id && p.cantidadPersonalizada === esCantidadPersonalizada);
 
-    if (esCantidadPersonalizada) {
-      if (cantidad > stockDisponible) {
-        mostrarNotificacion(`Stock insuficiente. Solo hay ${stockDisponible} kg disponibles.`, 'warning');
-        return;
+      if (productoExistente && !esCantidadPersonalizada) {
+        productoExistente.cantidad += cantidad;
+      } else if (productoExistente && esCantidadPersonalizada) {
+        carrito.push({
+          id, nombre, precio: precioFinal, cantidad: 1,
+          cantidadPersonalizada: true,
+          precioBase: precioBase,
+          cantidadPersonalizadaValor: cantidad,
+          unidad: 'kg',
+          codigoBarras: codigoBarras
+        });
+      } else {
+        carrito.push({
+          id, nombre,
+          precio: esCantidadPersonalizada ? precioFinal : precioBase,
+          cantidad: esCantidadPersonalizada ? 1 : cantidad,
+          cantidadPersonalizada: esCantidadPersonalizada,
+          precioBase: esCantidadPersonalizada ? precioBase : null,
+          cantidadPersonalizadaValor: esCantidadPersonalizada ? cantidad : null,
+          unidad: esCantidadPersonalizada ? 'kg' : 'unidad',
+          codigoBarras: codigoBarras
+        });
       }
-    } else {
-      if (cantidad > stockDisponible) {
-        mostrarNotificacion(`Stock insuficiente. Solo hay ${stockDisponible} unidades disponibles.`, 'warning');
-        return;
-      }
-    }
-    // ----- FIN VALIDACIÓN -----
 
-    // Buscar producto existente en el carrito
-    const productoExistente = carrito.find(p => p.id === id && p.cantidadPersonalizada === esCantidadPersonalizada);
+      actualizarCarrito();
 
-    if (productoExistente && !esCantidadPersonalizada) {
-      // Producto normal: sumar cantidad
-      productoExistente.cantidad += cantidad;
-    } else if (productoExistente && esCantidadPersonalizada) {
-      // Producto por kg: se agrega como ítem separado
-      carrito.push({
-        id, nombre, precio: precioFinal, cantidad: 1,
-        cantidadPersonalizada: true,
-        precioBase: precioBase,
-        cantidadPersonalizadaValor: cantidad,
-        unidad: 'kg'
-      });
-    } else {
-      // Producto nuevo
-      carrito.push({
-        id, nombre,
-        precio: esCantidadPersonalizada ? precioFinal : precioBase,
-        cantidad: esCantidadPersonalizada ? 1 : cantidad,
-        cantidadPersonalizada: esCantidadPersonalizada,
-        precioBase: esCantidadPersonalizada ? precioBase : null,
-        cantidadPersonalizadaValor: esCantidadPersonalizada ? cantidad : null,
-        unidad: esCantidadPersonalizada ? 'kg' : 'unidad'
-      });
-    }
+      const mensaje = esCantidadPersonalizada
+        ? `${nombre} (${cantidad} kg) agregado al carrito - $${precioFinal.toFixed(2)}`
+        : `${nombre} x${cantidad} agregado al carrito`;
+      mostrarNotificacion(mensaje, 'success');
+    });
 
-    actualizarCarrito();
-
-    // Mostrar notificación
-    const mensaje = esCantidadPersonalizada
-      ? `${nombre} (${cantidad} kg) agregado al carrito - $${precioFinal.toFixed(2)}`
-      : `${nombre} x${cantidad} agregado al carrito`;
-    mostrarNotificacion(mensaje, 'success');
-  });
-
-  eventListenersAgregados = true;
-}
-  // Función para mostrar notificaciones
-  function mostrarNotificacion(mensaje, tipo = 'success') {
-  // Eliminar notificación anterior si existe
-  const toastAnterior = document.querySelector('.toast-container');
-  if (toastAnterior) {
-    toastAnterior.remove();
+    eventListenersAgregados = true;
   }
-  
-  const toastContainer = document.createElement('div');
-  toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
-  toastContainer.style.zIndex = '9999';
-  toastContainer.innerHTML = `
-    <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
-      <div class="toast-header bg-${tipo} text-white">
-        <strong class="me-auto">Producto agregado</strong>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-      </div>
-      <div class="toast-body">
-        ${mensaje}
-      </div>
-    </div>
-  `;
-  
-  document.body.appendChild(toastContainer);
-  
-  // Eliminar la notificación después de 3 segundos
-  setTimeout(() => {
-    if (toastContainer.parentNode) {
-      toastContainer.remove();
-    }
-  }, 3000);
-}
 
-  // Cargar productos desde Firebase
+  function mostrarNotificacion(mensaje, tipo = 'success') {
+    const toastAnterior = document.querySelector('.toast-container');
+    if (toastAnterior) {
+      toastAnterior.remove();
+    }
+    
+    const toastContainer = document.createElement('div');
+    toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+    toastContainer.style.zIndex = '9999';
+    toastContainer.innerHTML = `
+      <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-${tipo} text-white">
+          <strong class="me-auto">${tipo === 'success' ? 'Producto agregado' : 'Atención'}</strong>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+          ${mensaje}
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(toastContainer);
+    
+    setTimeout(() => {
+      if (toastContainer.parentNode) {
+        toastContainer.remove();
+      }
+    }, 3000);
+  }
+
   async function cargarProductos() {
     try {
       const productos = await fb.obtenerProductos();
       
-      // Inicializar manejador de categorías
-      manejadorCategorias.extraerCategorias(productos);
-      manejadorCategorias.renderizarCategorias();
-     // manejadorCategorias.renderizarProductos();
+      if (typeof manejadorCategorias !== 'undefined' && manejadorCategorias) {
+        manejadorCategorias.extraerCategorias(productos);
+        manejadorCategorias.renderizarCategorias();
+      }
       
-      // Configurar event listeners una sola vez
       agregarEventListenersProductos();
       
     } catch (error) {
       console.error("Error cargando productos:", error);
-      document.getElementById('productosPorCategoria').innerHTML = `
-        <div class="col-12 text-center">
-          <div class="alert alert-warning">
-            <h4>Error cargando productos</h4>
-            <p>Por favor, verifica tu conexión a internet</p>
+      const productosContainer = document.getElementById('productosPorCategoria');
+      if (productosContainer) {
+        productosContainer.innerHTML = `
+          <div class="col-12 text-center">
+            <div class="alert alert-warning">
+              <h4>Error cargando productos</h4>
+              <p>Por favor, verifica tu conexión a internet</p>
+            </div>
           </div>
-        </div>
-      `;
+        `;
+      }
     }
   }
   
-  // Abrir modal del carrito
   verCarrito.addEventListener('click', () => {
     renderizarCarrito();
     carritoModal.show();
   });
   
-  // Finalizar compra
-  // Finalizar compra
-finalizarCompraBtn.addEventListener('click', async () => {
-  if (carrito.length === 0) {
-    mostrarNotificacion('El carrito está vacío. Agrega productos antes de finalizar la compra.', 'warning');
-    return;
-  }
-  
-  const nombre = document.getElementById('nombre').value.trim();
-  const telefono = document.getElementById('telefono').value.trim();
-  const metodoPago = document.querySelector('input[name="pago"]:checked').value;
-  
-  // Validaciones básicas
-  if (!nombre || !telefono) {
-    mostrarNotificacion('Por favor, ingresa tu nombre y teléfono.', 'warning');
-    return;
-  }
-
-  if (!/^\d{10}$/.test(telefono)) {
-    mostrarNotificacion('Por favor, ingresa un teléfono válido de 10 dígitos.', 'warning');
-    return;
-  }
-
-  // Crear objeto pedido
-  const pedido = {
-    cliente: {
-      nombre: nombre,
-      telefono: telefono,
-      direccion: document.getElementById('direccion').value.trim() || ''
-    },
-    productos: carrito,
-    total: carrito.reduce((sum, producto) => sum + (producto.precio * producto.cantidad), 0),
-    estado: "pendiente",
-    fecha: new Date(),
-    metodoPago: metodoPago,
-    metodoEntrega: document.querySelector('input[name="entrega"]:checked').value,
-    estadoPago: "pendiente"
-  };
-
-  try {
-    // Mostrar loading
-    finalizarCompraBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Procesando...';
-    finalizarCompraBtn.disabled = true;
-
-    // Guardar pedido en Firebase primero
-    const pedidoId = await fb.guardarPedido(pedido);
+  // ==================== FINALIZAR COMPRA CORREGIDO ====================
+  finalizarCompraBtn.addEventListener('click', async () => {
+    if (carrito.length === 0) {
+      mostrarNotificacion('El carrito está vacío. Agrega productos antes de finalizar la compra.', 'warning');
+      return;
+    }
     
-    // Si es pago con tarjeta o transferencia, usar Mercado Pago
-    if (metodoPago === 'tarjeta' || metodoPago === 'transferencia') {
-      await procesarPagoMercadoPago(pedido, pedidoId);
-    } else {
-      // Pago en sucursal
-      await finalizarPedidoSucursal(pedido, pedidoId);
+    const nombre = document.getElementById('nombre').value.trim();
+    const telefono = document.getElementById('telefono').value.trim();
+    const metodoPagoRadio = document.querySelector('input[name="pago"]:checked');
+    const entregaRadio = document.querySelector('input[name="entrega"]:checked');
+    
+    if (!nombre || !telefono) {
+      mostrarNotificacion('Por favor, ingresa tu nombre y teléfono.', 'warning');
+      return;
     }
 
-  } catch (error) {
-    console.error('Error en proceso de compra:', error);
-    mostrarNotificacion('Error al procesar la compra. Por favor, intenta nuevamente.', 'danger');
-    finalizarCompraBtn.innerHTML = 'Finalizar compra';
-    finalizarCompraBtn.disabled = false;
+    if (!/^\d{10}$/.test(telefono)) {
+      mostrarNotificacion('Por favor, ingresa un teléfono válido de 10 dígitos.', 'warning');
+      return;
+    }
+
+    if (!metodoPagoRadio) {
+      mostrarNotificacion('Por favor, selecciona un método de pago.', 'warning');
+      return;
+    }
+
+    if (!entregaRadio) {
+      mostrarNotificacion('Por favor, selecciona un tipo de entrega.', 'warning');
+      return;
+    }
+
+    const metodoPago = metodoPagoRadio.value;
+    const metodoEntrega = entregaRadio.value;
+    const direccion = document.getElementById('direccion').value.trim() || 'No especificada';
+
+    // Crear copia del carrito con todos los datos necesarios
+    const productosParaPedido = carrito.map(item => ({
+      id: item.id,
+      nombre: item.nombre,
+      precio: item.precioBase || item.precio,
+      cantidad: item.cantidad,
+      cantidadPersonalizada: item.cantidadPersonalizada || false,
+      cantidadPersonalizadaValor: item.cantidadPersonalizadaValor || null,
+      unidad: item.unidad || (item.cantidadPersonalizada ? 'kg' : 'pz'),
+      codigoBarras: item.codigoBarras || 'N/A'
+    }));
+
+    const totalCompra = carrito.reduce((sum, producto) => sum + (producto.precio * producto.cantidad), 0);
+
+    const pedido = {
+      cliente: {
+        nombre: nombre,
+        telefono: telefono,
+        direccion: direccion
+      },
+      productos: productosParaPedido,
+      total: totalCompra,
+      estado: "pendiente",
+      fecha: new Date(),
+      metodoPago: metodoPago,
+      metodoEntrega: metodoEntrega,
+      estadoPago: "pendiente",
+      fechaCreacion: new Date()
+    };
+
+    console.log('Pedido a guardar:', pedido); // Para depuración
+
+    try {
+      finalizarCompraBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Procesando...';
+      finalizarCompraBtn.disabled = true;
+
+      const pedidoId = await fb.guardarPedido(pedido);
+      console.log('Pedido guardado con ID:', pedidoId);
+      
+      if (metodoPago === 'tarjeta' || metodoPago === 'transferencia') {
+        await procesarPagoMercadoPago(pedido, pedidoId);
+      } else {
+        await finalizarPedidoSucursal(pedido, pedidoId);
+      }
+
+    } catch (error) {
+      console.error('Error en proceso de compra:', error);
+      mostrarNotificacion('Error al procesar la compra. Por favor, intenta nuevamente.', 'danger');
+      finalizarCompraBtn.innerHTML = 'Finalizar compra';
+      finalizarCompraBtn.disabled = false;
+    }
+  });
+
+  async function procesarPagoMercadoPago(pedido, pedidoId) {
+    try {
+      const preferencia = await fb.crearPreferenciaMercadoPago({
+        ...pedido,
+        id: pedidoId
+      });
+
+      const pagoData = {
+        pedidoId: pedidoId,
+        metodoPago: pedido.metodoPago,
+        monto: pedido.total,
+        estado: 'pendiente',
+        preferenciaId: preferencia.id,
+        fechaCreacion: new Date(),
+        cliente: pedido.cliente
+      };
+
+      await db.collection("pagos").add(pagoData);
+      window.location.href = preferencia.init_point;
+
+    } catch (error) {
+      console.error('Error procesando pago:', error);
+      throw new Error('No se pudo conectar con el sistema de pagos');
+    }
   }
-});
 
-// Función para procesar pago con Mercado Pago
-async function procesarPagoMercadoPago(pedido, pedidoId) {
-  try {
-    // Crear preferencia de pago en Mercado Pago
-    const preferencia = await fb.crearPreferenciaMercadoPago({
-      ...pedido,
-      id: pedidoId
-    });
-
-    // Guardar información del pago en Firebase
+  async function finalizarPedidoSucursal(pedido, pedidoId) {
     const pagoData = {
       pedidoId: pedidoId,
-      metodoPago: pedido.metodoPago,
+      metodoPago: 'sucursal',
       monto: pedido.total,
       estado: 'pendiente',
-      preferenciaId: preferencia.id,
       fechaCreacion: new Date(),
       cliente: pedido.cliente
     };
 
     await db.collection("pagos").add(pagoData);
-
-    // Redirigir a Mercado Pago
-    window.location.href = preferencia.init_point;
-
-  } catch (error) {
-    console.error('Error procesando pago:', error);
-    throw new Error('No se pudo conectar con el sistema de pagos');
+    mostrarResumenCompra(pedido, pedidoId, 'sucursal');
+    enviarWhatsApp(pedido, pedidoId);
+    
+    setTimeout(() => {
+      if (typeof ticketGenerator !== 'undefined' && ticketGenerator) {
+        ticketGenerator.mostrarTicketModal(pedido, pedidoId);
+      }
+    }, 1000);
+    
+    carrito = [];
+    actualizarCarrito();
   }
-}
 
-// Función para pago en sucursal
-async function finalizarPedidoSucursal(pedido, pedidoId) {
-  // Guardar información de pago en sucursal
-  const pagoData = {
-    pedidoId: pedidoId,
-    metodoPago: 'sucursal',
-    monto: pedido.total,
-    estado: 'pendiente',
-    fechaCreacion: new Date(),
-    cliente: pedido.cliente
-  };
-
-  await db.collection("pagos").add(pagoData);
-
-  // Mostrar resumen con opción de ticket
-  mostrarResumenCompra(pedido, pedidoId, 'sucursal');
-  enviarWhatsApp(pedido, pedidoId);
-  
-  // Mostrar ticket
-  setTimeout(() => {
-    ticketGenerator.mostrarTicketModal(pedido, pedidoId);
-  }, 1000);
-  
-  // Limpiar carrito
-  carrito = [];
-  actualizarCarrito();
-}
-
-// Modificar la función mostrarResumenCompra para incluir botón de ticket
-function mostrarResumenCompra(pedido, pedidoId, metodoPago) {
-  const resumenHTML = `
-    <div class="alert alert-success">
-      <h5>¡${metodoPago === 'sucursal' ? 'Pedido realizado con éxito!' : 'Redirigiendo a pago...'}!</h5>
-      <p>Gracias por tu compra, ${pedido.cliente.nombre}.</p>
-      <p>Número de pedido: <strong>${pedidoId}</strong></p>
-      <p>Total: <strong>$${(pedido.total * 1.16).toFixed(2)}</strong> (incluye IVA)</p>
-      <p>Método de pago: ${pedido.metodoPago}</p>
-      <p>Tipo de entrega: ${pedido.metodoEntrega === 'domicilio' ? 'Entrega a domicilio' : 'Recolección en sucursal'}</p>
-      <p>Nos contactaremos al teléfono: <strong>${pedido.cliente.telefono}</strong></p>
+  function mostrarResumenCompra(pedido, pedidoId, metodoPago) {
+    const totalConIVA = pedido.total * 1.16;
+    
+    const resumenHTML = `
+      <div class="alert alert-success">
+        <h5>¡${metodoPago === 'sucursal' ? 'Pedido realizado con éxito!' : 'Redirigiendo a pago...'}!</h5>
+        <p>Gracias por tu compra, ${pedido.cliente.nombre}.</p>
+        <p>Número de pedido: <strong>${pedidoId}</strong></p>
+        <p>Total: <strong>$${totalConIVA.toFixed(2)}</strong> (incluye IVA)</p>
+        <p>Método de pago: ${pedido.metodoPago}</p>
+        <p>Tipo de entrega: ${pedido.metodoEntrega === 'domicilio' ? 'Entrega a domicilio' : 'Recolección en sucursal'}</p>
+        <p>Nos contactaremos al teléfono: <strong>${pedido.cliente.telefono}</strong></p>
+        
+        ${metodoPago === 'sucursal' ? 
+          `<div class="mt-3">
+            <button id="verTicketBtn" class="btn btn-primary">
+              <i class="fas fa-receipt me-1"></i> Ver Comprobante
+            </button>
+            <p class="mt-2"><strong>💰 Recuerda realizar tu pago en sucursal</strong></p>
+          </div>` : 
+          '<p class="mt-2"><strong>🔗 Serás redirigido a Mercado Pago para completar tu pago...</strong></p>'
+        }
+      </div>
+    `;
+    
+    const resumenContainer = document.getElementById('resumenCompra');
+    if (resumenContainer) {
+      resumenContainer.innerHTML = resumenHTML;
+    }
+    
+    if (metodoPago === 'sucursal') {
+      const verTicketBtn = document.getElementById('verTicketBtn');
+      if (verTicketBtn) {
+        verTicketBtn.addEventListener('click', () => {
+          if (typeof ticketGenerator !== 'undefined' && ticketGenerator) {
+            ticketGenerator.mostrarTicketModal(pedido, pedidoId);
+          }
+        });
+      }
       
-      ${metodoPago === 'sucursal' ? 
-        `<div class="mt-3">
-          <button id="verTicketBtn" class="btn btn-primary">
-            <i class="fas fa-receipt me-1"></i> Ver Comprobante
-          </button>
-          <p class="mt-2"><strong>💰 Recuerda realizar tu pago en sucursal</strong></p>
-        </div>` : 
-        '<p class="mt-2"><strong>🔗 Serás redirigido a Mercado Pago para completar tu pago...</strong></p>'
-      }
-    </div>
-  `;
-  
-  document.getElementById('resumenCompra').innerHTML = resumenHTML;
-  
-  // Agregar event listener al botón de ver ticket
-  if (metodoPago === 'sucursal') {
-    document.getElementById('verTicketBtn').addEventListener('click', () => {
-      ticketGenerator.mostrarTicketModal(pedido, pedidoId);
-    });
-  }
-  
-  if (metodoPago === 'sucursal') {
-    setTimeout(() => {
-      limpiarFormularioYCerrar();
-    }, 10000);
-  }
-}
-
-// Función para mostrar resumen de compra
-function mostrarResumenCompra(pedido, pedidoId, metodoPago) {
-  const resumenHTML = `
-    <div class="alert alert-success">
-      <h5>¡${metodoPago === 'sucursal' ? 'Pedido realizado con éxito!' : 'Redirigiendo a pago...'}!</h5>
-      <p>Gracias por tu compra, ${pedido.cliente.nombre}.</p>
-      <p>Número de pedido: <strong>${pedidoId}</strong></p>
-      <p>Total: <strong>$${pedido.total.toFixed(2)}</strong></p>
-      <p>Método de pago: ${pedido.metodoPago}</p>
-      <p>Tipo de entrega: ${pedido.metodoEntrega === 'domicilio' ? 'Entrega a domicilio' : 'Recolección en sucursal'}</p>
-      <p>Nos contactaremos al teléfono: <strong>${pedido.cliente.telefono}</strong></p>
-      ${metodoPago === 'sucursal' ? 
-        '<p class="mt-2"><strong>💰 Recuerda realizar tu pago en sucursal</strong></p>' : 
-        '<p class="mt-2"><strong>🔗 Serás redirigido a Mercado Pago para completar tu pago...</strong></p>'
-      }
-    </div>
-  `;
-  
-  document.getElementById('resumenCompra').innerHTML = resumenHTML;
-  
-  if (metodoPago === 'sucursal') {
-    setTimeout(() => {
-      limpiarFormularioYCerrar();
-    }, 5000);
-  }
-}
-
-// Función para validar datos de tarjeta (solo formato)
-function validarDatosTarjeta() {
-  const numTarjeta = document.getElementById('numTarjeta').value.replace(/\s/g, '');
-  const nombreTarjeta = document.getElementById('nombreTarjeta').value.trim();
-  const vencimiento = document.getElementById('vencimiento').value;
-  const cvv = document.getElementById('cvv').value;
-
-  if (!/^\d{13,19}$/.test(numTarjeta)) {
-    throw new Error('Número de tarjeta inválido');
+      setTimeout(() => {
+        limpiarFormularioYCerrar();
+      }, 10000);
+    }
   }
 
-  if (!nombreTarjeta || nombreTarjeta.length < 3) {
-    throw new Error('Nombre en tarjeta inválido');
+  function validarDatosTarjeta() {
+    const numTarjeta = document.getElementById('numTarjeta').value.replace(/\s/g, '');
+    const nombreTarjeta = document.getElementById('nombreTarjeta').value.trim();
+    const vencimiento = document.getElementById('vencimiento').value;
+    const cvv = document.getElementById('cvv').value;
+
+    if (!/^\d{13,19}$/.test(numTarjeta)) {
+      throw new Error('Número de tarjeta inválido');
+    }
+
+    if (!nombreTarjeta || nombreTarjeta.length < 3) {
+      throw new Error('Nombre en tarjeta inválido');
+    }
+
+    if (!/^\d{2}\/\d{2}$/.test(vencimiento)) {
+      throw new Error('Fecha de vencimiento inválida (use MM/AA)');
+    }
+
+    if (!/^\d{3,4}$/.test(cvv)) {
+      throw new Error('CVV inválido');
+    }
+
+    return true;
   }
 
-  if (!/^\d{2}\/\d{2}$/.test(vencimiento)) {
-    throw new Error('Fecha de vencimiento inválida (use MM/AA)');
+  function limpiarFormularioYCerrar() {
+    const resumenContainer = document.getElementById('resumenCompra');
+    if (resumenContainer) resumenContainer.innerHTML = '';
+    
+    const nombreInput = document.getElementById('nombre');
+    if (nombreInput) nombreInput.value = '';
+    
+    const telefonoInput = document.getElementById('telefono');
+    if (telefonoInput) telefonoInput.value = '';
+    
+    const direccionInput = document.getElementById('direccion');
+    if (direccionInput) direccionInput.value = '';
+    
+    const numTarjetaInput = document.getElementById('numTarjeta');
+    if (numTarjetaInput) numTarjetaInput.value = '';
+    
+    const nombreTarjetaInput = document.getElementById('nombreTarjeta');
+    if (nombreTarjetaInput) nombreTarjetaInput.value = '';
+    
+    const vencimientoInput = document.getElementById('vencimiento');
+    if (vencimientoInput) vencimientoInput.value = '';
+    
+    const cvvInput = document.getElementById('cvv');
+    if (cvvInput) cvvInput.value = '';
+    
+    const folioInput = document.getElementById('folioTransferencia');
+    if (folioInput) folioInput.value = '';
+    
+    carritoModal.hide();
+    finalizarCompraBtn.innerHTML = 'Finalizar compra';
+    finalizarCompraBtn.disabled = false;
   }
-
-  if (!/^\d{3,4}$/.test(cvv)) {
-    throw new Error('CVV inválido');
-  }
-
-  return true;
-}
-
-// Función para limpiar formulario
-function limpiarFormularioYCerrar() {
-  document.getElementById('resumenCompra').innerHTML = '';
-  document.getElementById('nombre').value = '';
-  document.getElementById('telefono').value = '';
-  document.getElementById('direccion').value = '';
-  document.getElementById('numTarjeta').value = '';
-  document.getElementById('nombreTarjeta').value = '';
-  document.getElementById('vencimiento').value = '';
-  document.getElementById('cvv').value = '';
-  document.getElementById('folioTransferencia').value = '';
-  carritoModal.hide();
-  finalizarCompraBtn.innerHTML = 'Finalizar compra';
-  finalizarCompraBtn.disabled = false;
-}
   
   // Inicializar
   configurarEventListenersPermanentes();
@@ -636,19 +634,38 @@ function limpiarFormularioYCerrar() {
   cargarProductos();
 });
 
-// En script.js, después de las funciones existentes
 function procesarExitoPago(pedidoId, metodoPago) {
-  // Obtener el pedido completo desde Firebase
   db.collection("pedidos").doc(pedidoId).get().then((doc) => {
     if (doc.exists) {
       const pedido = { id: pedidoId, ...doc.data() };
       
-      // Mostrar resumen con ticket
-      mostrarResumenCompra(pedido, pedidoId, metodoPago);
+      const resumenContainer = document.getElementById('resumenCompra');
+      if (resumenContainer) {
+        const totalConIVA = pedido.total * 1.16;
+        resumenContainer.innerHTML = `
+          <div class="alert alert-success">
+            <h5>¡Pago completado con éxito!</h5>
+            <p>Gracias por tu compra, ${pedido.cliente?.nombre || 'cliente'}.</p>
+            <p>Número de pedido: <strong>${pedidoId}</strong></p>
+            <p>Total: <strong>$${totalConIVA.toFixed(2)}</strong> (incluye IVA)</p>
+            <button id="verTicketBtnPago" class="btn btn-primary mt-2">
+              <i class="fas fa-receipt me-1"></i> Ver Comprobante
+            </button>
+          </div>
+        `;
+        
+        const verTicketBtn = document.getElementById('verTicketBtnPago');
+        if (verTicketBtn && typeof ticketGenerator !== 'undefined') {
+          verTicketBtn.addEventListener('click', () => {
+            ticketGenerator.mostrarTicketModal(pedido, pedidoId);
+          });
+        }
+      }
       
-      // Mostrar ticket después de un breve delay
       setTimeout(() => {
-        ticketGenerator.mostrarTicketModal(pedido, pedidoId);
+        if (typeof ticketGenerator !== 'undefined') {
+          ticketGenerator.mostrarTicketModal(pedido, pedidoId);
+        }
       }, 1500);
     }
   });

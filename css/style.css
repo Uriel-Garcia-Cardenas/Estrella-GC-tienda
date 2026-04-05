@@ -554,3 +554,66 @@ html {
   transform: scale(0.98);
   transition: all 0.1s ease;
 }
+/* ============================================
+   ESTILOS PARA DROPDOWNS CON SCROLL
+   ============================================ */
+
+/* Dropdown de categorías y marcas con scroll vertical */
+.dropdown-menu {
+  max-height: 400px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+/* Personalizar scrollbar para navegadores WebKit (Chrome, Edge, Safari) */
+.dropdown-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dropdown-menu::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.dropdown-menu::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 10px;
+}
+
+.dropdown-menu::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Estilo específico para dropdown oscuro (navbar) */
+.dropdown-menu-dark {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.dropdown-menu-dark::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dropdown-menu-dark::-webkit-scrollbar-track {
+  background: #2c2c2c;
+  border-radius: 10px;
+}
+
+.dropdown-menu-dark::-webkit-scrollbar-thumb {
+  background: #666;
+  border-radius: 10px;
+}
+
+.dropdown-menu-dark::-webkit-scrollbar-thumb:hover {
+  background: #888;
+}
+
+/* Para móviles, dropdown un poco más pequeño */
+@media (max-width: 768px) {
+  .dropdown-menu {
+    max-height: 300px;
+  }
+  .dropdown-menu-dark {
+    max-height: 300px;
+  }
+}

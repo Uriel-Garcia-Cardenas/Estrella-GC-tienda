@@ -41,55 +41,94 @@
       </li>
     </ul>
     
-    <div class="tab-content mt-3" id="adminTabsContent">
-      <div class="tab-pane fade show active" id="pedidos" role="tabpanel">
+  <div class="tab-content mt-3" id="adminTabsContent">
+    <div class="tab-pane fade show active" id="pedidos" role="tabpanel">
         <h3>Pedidos Recientes</h3>
-        <div class="mb-3">
-          <select id="filtroEstado" class="form-select w-auto d-inline-block">
-            <option value="todos">Todos los estados</option>
-            <option value="pendiente">Pendientes</option>
-            <option value="confirmado">Confirmados</option>
-            <option value="enviado">Enviados</option>
-            <option value="entregado">Entregados</option>
-          </select>
-        </div>
-        <div id="listaPedidos">
-          <div class="alert alert-info">Cargando pedidos...</div>
-        </div>
-      </div>
-      
-      <!-- En la sección de productos del admin.html, agrega esto después del botón "Agregar Producto" -->
-<div class="tab-pane fade" id="productos" role="tabpanel">
-    <h3>Gestión de Productos</h3>
-    
-    <!-- Controles de filtro -->
-    <div class="row mb-3">
-        <div class="col-md-6">
-            <div class="d-flex align-items-center gap-3">
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalProducto">
-                    <i class="fas fa-plus me-1"></i> Agregar Producto
-                </button>
-                
-                <select id="filtroCategoria" class="form-select w-auto">
-                    <option value="todas">Todas las categorías</option>
-                    <!-- Las categorías se cargarán dinámicamente -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <select id="filtroEstado" class="form-select w-auto d-inline-block">
+                    <option value="todos">Todos los estados</option>
+                    <option value="pendiente">Pendientes</option>
+                    <option value="confirmado">Confirmados</option>
+                    <option value="enviado">Enviados</option>
+                    <option value="entregado">Entregados</option>
                 </select>
             </div>
+            <div class="col-md-6 text-end">
+                <button id="btnEliminarSeleccionados" class="btn btn-danger btn-sm" style="display: none;">
+                    <i class="fas fa-trash-alt me-1"></i> Eliminar seleccionados
+                </button>
+            </div>
         </div>
-        <div class="col-md-6 text-end">
-            <small class="text-muted" id="infoFiltroProductos">
-                Cargando información...
-            </small>
+        <div id="listaPedidos">
+            <div class="alert alert-info">Cargando pedidos...</div>
         </div>
     </div>
     
-    <div class="row" id="listaProductos">
-        <div class="col-12">
-            <div class="alert alert-info">Cargando productos...</div>
+    <div class="tab-pane fade" id="productos" role="tabpanel">
+        <h3>Gestión de Productos</h3>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="d-flex align-items-center gap-3">
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalProducto">
+                        <i class="fas fa-plus me-1"></i> Agregar Producto
+                    </button>
+                    
+                    <select id="filtroCategoria" class="form-select w-auto">
+                        <option value="todas">Todas las categorías</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6 text-end">
+                <small class="text-muted" id="infoFiltroProductos">
+                    Cargando información...
+                </small>
+            </div>
+        </div>
+        
+        <!-- Barra de búsqueda -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="input-group" style="max-width: 350px;">
+                    <input type="text" id="adminSearchInput" class="form-control" placeholder="Buscar producto por nombre...">
+                    <button class="btn btn-outline-secondary" id="adminSearchBtn" type="button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                    <button class="btn btn-outline-danger" id="limpiarBusqueda" type="button" style="display: none;">
+                        <i class="fas fa-times"></i> Limpiar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        
+        <!-- INICIO: Barra de búsqueda por código de barras (AGREGAR AQUÍ) -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="input-group" style="max-width: 400px;">
+                    <span class="input-group-text bg-primary text-white"><i class="fas fa-barcode"></i></span>
+                    <input type="text" id="adminBarcodeInput" class="form-control" placeholder="Escanea o escribe código de barras...">
+                    <button class="btn btn-primary" id="adminBarcodeBtn" type="button">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                    <button class="btn btn-outline-secondary" id="limpiarBarcodeBtn" type="button" style="display: none;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <small class="text-muted mt-1 d-block">✅ Escanea con lector USB o escribe manualmente y presiona Enter</small>
+            </div>
+        </div>
+        <!-- FIN: Barra de búsqueda por código de barras -->
+
+        
+        <div class="row" id="listaProductos">
+            <div class="col-12">
+                <div class="alert alert-info">Cargando productos...</div>
+            </div>
         </div>
     </div>
 </div>
-    </div>
   </div>
 
   <!-- Modal para agregar/editar productos -->
@@ -108,10 +147,63 @@
                 <label class="form-label">Nombre *</label>
                 <input type="text" class="form-control" id="productoNombre" required>
               </div>
+              
               <div class="col-md-6 mb-3">
                 <label class="form-label">Precio *</label>
                 <input type="number" step="0.01" class="form-control" id="productoPrecio" required>
               </div>
+              <!-- Después del campo de Descripción, antes del checkbox Destacado -->
+<div class="row">
+  <div class="col-md-6 mb-3">
+    <label class="form-label">Código de Barras</label>
+    <input type="text" class="form-control" id="productoCodigoBarras" placeholder="7501013105551">
+    <small class="text-muted">Código único del producto</small>
+  </div>
+  <div class="col-md-6 mb-3">
+    <label class="form-label">Proveedor</label>
+    <input type="text" class="form-control" id="productoProveedor" placeholder="JUMEX">
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-6 mb-3">
+    <label class="form-label">Marca</label>
+    <input type="text" class="form-control" id="productoMarca" placeholder="Jumex">
+  </div>
+  <div class="col-md-3 mb-3">
+    <label class="form-label">Peso/Volumen</label>
+    <input type="number" step="0.01" class="form-control" id="productoPesoVolumen" placeholder="413">
+  </div>
+  <div class="col-md-3 mb-3">
+    <label class="form-label">Unidad de Medida</label>
+    <select class="form-control" id="productoUnidadMedida">
+      <option value="PZ">Pieza (PZ)</option>
+      <option value="KG">Kilogramo (KG)</option>
+      <option value="GR">Gramo (GR)</option>
+      <option value="LT">Litro (LT)</option>
+      <option value="ML">Mililitro (ML)</option>
+      <option value="PAQ">Paquete (PAQ)</option>
+      <option value="CAJA">Caja</option>
+    </select>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-4 mb-3">
+    <label class="form-label">Precio de Compra</label>
+    <input type="number" step="0.01" class="form-control" id="productoPrecioCompra" placeholder="15.16">
+    <small class="text-muted">Costo del producto para la tienda</small>
+  </div>
+  <div class="col-md-4 mb-3">
+    <label class="form-label">Punto de Reorden</label>
+    <input type="number" class="form-control" id="productoPuntoReorden" placeholder="2">
+    <small class="text-muted">Stock mínimo para alerta</small>
+  </div>
+  <div class="col-md-4 mb-3">
+    <label class="form-label">Fecha de Vencimiento</label>
+    <input type="date" class="form-control" id="productoFechaVencimiento">
+  </div>
+</div>
             </div>
             <div class="row">
               <div class="col-md-6 mb-3">
@@ -149,6 +241,7 @@
                   <!-- ... otras categorías ... -->
                 </select>
               </div>
+              
               <div class="col-md-6 mb-3">
                 <label class="form-label">Stock *</label>
                 <input type="number" class="form-control" id="productoStock" required>

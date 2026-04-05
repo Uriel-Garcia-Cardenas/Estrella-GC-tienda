@@ -1,4 +1,5 @@
-// js/admin.js carga por categorías
+// js/admin.js - Panel de administración con búsqueda, eliminación de pedidos y código de barras
+
 class AdminManager {
     constructor() {
         this.pedidos = [];
@@ -9,7 +10,10 @@ class AdminManager {
         this.categorias = [];
         this.isLoading = false;
         this.currentProductoId = null;
-        
+        this.terminoBusqueda = '';
+        this.productosOriginales = [];
+        this.categoriaChangeHandler = null;
+        this.pedidosSeleccionados = new Set();  // ← IMPORTANTE: para seleccionar pedidos
         this.init();
     }
 
@@ -23,8 +27,255 @@ class AdminManager {
         }
     }
 
+    // ==================== MÉTODOS DE BÚSQUEDA Y FILTRADO ====================
+
+    filtrarProductos() {
+        let productosFiltrados = [...this.productosOriginales];
+        
+        if (this.filtroCategoria !== 'todas') {
+            productosFiltrados = productosFiltrados.filter(p => p.categoria === this.filtroCategoria);
+        }
+        
+        if (this.terminoBusqueda.trim() !== '') {
+            const termino = this.terminoBusqueda.toLowerCase().trim();
+            productosFiltrados = productosFiltrados.filter(p => 
+                p.nombre.toLowerCase().includes(termino)
+            );
+        }
+        
+        this.productos = productosFiltrados;
+        this.renderizarProductos();
+        this.mostrarInfoFiltro();
+    }
+
+    buscarProductos() {
+        const searchInput = document.getElementById('adminSearchInput');
+        if (searchInput) {
+            this.terminoBusqueda = searchInput.value;
+            this.filtrarProductos();
+            this.actualizarBotonLimpiar();
+        }
+    }
+
+    limpiarBusqueda() {
+        const searchInput = document.getElementById('adminSearchInput');
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        this.terminoBusqueda = '';
+        this.filtrarProductos();
+        this.actualizarBotonLimpiar();
+    }
+
+    actualizarBotonLimpiar() {
+        const btnLimpiar = document.getElementById('limpiarBusqueda');
+        if (btnLimpiar) {
+            btnLimpiar.style.display = this.terminoBusqueda ? 'inline-flex' : 'none';
+        }
+    }
+
+        // ==================== BÚSQUEDA POR CÓDIGO DE BARRAS ====================
+    
+    buscarPorCodigoBarras() {
+        const barcodeInput = document.getElementById('adminBarcodeInput');
+        const codigo = barcodeInput.value.trim();
+        
+        if (!codigo) {
+            this.mostrarMensaje('Escanee o escriba un código de barras', 'warning');
+            return;
+        }
+        
+        // Buscar en todos los productos
+        const producto = this.productosOriginales.find(p => 
+            p.codigoBarras === codigo || p.codigo === codigo
+        );
+        
+        if (producto) {
+            this.limpiarBusqueda();
+            this.productos = [producto];
+            this.renderizarProductos();
+            this.mostrarMensaje(`✅ ${producto.nombre} encontrado`, 'success');
+            
+            // Resaltar y hacer scroll
+            setTimeout(() => {
+                const card = document.querySelector(`[data-producto-id="${producto.id}"]`);
+                if (card) {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    card.style.transition = 'all 0.3s';
+                    card.style.boxShadow = '0 0 0 3px #28a745';
+                    setTimeout(() => card.style.boxShadow = '', 2000);
+                }
+            }, 100);
+            
+            barcodeInput.value = '';
+        } else {
+            this.mostrarMensaje(`❌ Código "${codigo}" no encontrado`, 'danger');
+            if (confirm(`¿Crear nuevo producto con código "${codigo}"?`)) {
+                this.limpiarFormularioProducto();
+                document.getElementById('productoCodigoBarras').value = codigo;
+                new bootstrap.Modal(document.getElementById('modalProducto')).show();
+            }
+            barcodeInput.value = '';
+        }
+    }
+    
+    limpiarBusquedaBarcode() {
+        document.getElementById('adminBarcodeInput').value = '';
+        this.filtrarProductos();
+        document.getElementById('limpiarBarcodeBtn').style.display = 'none';
+    }
+
+    mostrarInfoFiltro() {
+        const infoFiltro = document.getElementById('infoFiltroProductos');
+        if (!infoFiltro) return;
+
+        const totalProductos = this.productos.length;
+        const totalOriginales = this.productosOriginales.length;
+        
+        let infoText = `Mostrando ${totalProductos} de ${totalOriginales} productos`;
+        
+        if (this.filtroCategoria !== 'todas') {
+            infoText += ` en categoría <strong>${this.formatearCategoria(this.filtroCategoria)}</strong>`;
+        }
+        
+        if (this.terminoBusqueda) {
+            infoText += ` que coinciden con <strong>"${this.escapeHtml(this.terminoBusqueda)}"</strong>`;
+        }
+        
+        infoFiltro.innerHTML = infoText;
+    }
+
+    // ==================== SELECCIÓN Y ELIMINACIÓN DE PEDIDOS ====================
+
+    toggleSeleccionPedido(pedidoId, isChecked) {
+        if (isChecked) {
+            this.pedidosSeleccionados.add(pedidoId);
+        } else {
+            this.pedidosSeleccionados.delete(pedidoId);
+        }
+        this.actualizarBotonEliminarSeleccionados();
+    }
+
+    seleccionarTodosPedidos(seleccionar) {
+        const pedidosFiltrados = this.obtenerPedidosFiltrados();
+        
+        if (seleccionar) {
+            pedidosFiltrados.forEach(pedido => {
+                this.pedidosSeleccionados.add(pedido.id);
+            });
+        } else {
+            this.pedidosSeleccionados.clear();
+        }
+        
+        this.renderizarPedidos();
+        this.actualizarBotonEliminarSeleccionados();
+    }
+
+    actualizarBotonEliminarSeleccionados() {
+        const btnEliminar = document.getElementById('btnEliminarSeleccionados');
+        if (btnEliminar) {
+            const cantidad = this.pedidosSeleccionados.size;
+            btnEliminar.style.display = cantidad > 0 ? 'inline-flex' : 'none';
+            btnEliminar.innerHTML = `<i class="fas fa-trash-alt me-1"></i> Eliminar seleccionados (${cantidad})`;
+        }
+    }
+
+    async eliminarPedidosSeleccionados() {
+        const cantidad = this.pedidosSeleccionados.size;
+        
+        if (cantidad === 0) {
+            this.mostrarMensaje('No hay pedidos seleccionados', 'warning');
+            return;
+        }
+
+        const confirmacion = confirm(`¿Estás seguro de que quieres eliminar ${cantidad} pedido(s)? Esta acción no se puede deshacer.`);
+        
+        if (!confirmacion) return;
+
+        this.mostrarMensaje(`Eliminando ${cantidad} pedido(s)...`, 'info');
+        
+        let eliminados = 0;
+        let errores = 0;
+
+        for (const pedidoId of this.pedidosSeleccionados) {
+            try {
+                await this.eliminarPedidoDeFirebase(pedidoId);
+                eliminados++;
+            } catch (error) {
+                console.error(`Error eliminando pedido ${pedidoId}:`, error);
+                errores++;
+            }
+        }
+
+        this.pedidosSeleccionados.clear();
+        
+        await this.cargarPedidos();
+        
+        if (errores === 0) {
+            this.mostrarMensaje(`✅ ${eliminados} pedido(s) eliminados correctamente`, 'success');
+        } else {
+            this.mostrarMensaje(`⚠️ ${eliminados} eliminados, ${errores} errores`, 'warning');
+        }
+        
+        this.actualizarBotonEliminarSeleccionados();
+    }
+
+    async eliminarPedido(pedidoId) {
+        const confirmacion = confirm('¿Estás seguro de que quieres eliminar este pedido? Esta acción no se puede deshacer.');
+        
+        if (!confirmacion) return;
+
+        try {
+            await this.eliminarPedidoDeFirebase(pedidoId);
+            this.mostrarMensaje('✅ Pedido eliminado correctamente', 'success');
+            await this.cargarPedidos();
+        } catch (error) {
+            console.error('Error eliminando pedido:', error);
+            this.mostrarMensaje('❌ Error al eliminar el pedido', 'danger');
+        }
+    }
+
+    async eliminarPedidoDeFirebase(pedidoId) {
+        await fb.db.collection("pedidos").doc(pedidoId).delete();
+        
+        const pagosSnapshot = await fb.db.collection("pagos").where("pedidoId", "==", pedidoId).get();
+        const batch = fb.db.batch();
+        pagosSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+    }
+
+    obtenerPedidosFiltrados() {
+        return this.filtroEstado === 'todos' 
+            ? this.pedidos 
+            : this.pedidos.filter(p => p.estado === this.filtroEstado);
+    }
+
+    // ==================== SETUP DE EVENT LISTENERS ====================
+
     setupEventListeners() {
-        // Event delegation para mejor performance
+        // Event listeners para búsqueda
+        const searchInput = document.getElementById('adminSearchInput');
+        const searchBtn = document.getElementById('adminSearchBtn');
+        const limpiarBtn = document.getElementById('limpiarBusqueda');
+        
+        if (searchInput) {
+            searchInput.addEventListener('input', () => this.buscarProductos());
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.buscarProductos();
+            });
+        }
+        
+        if (searchBtn) {
+            searchBtn.addEventListener('click', () => this.buscarProductos());
+        }
+        
+        if (limpiarBtn) {
+            limpiarBtn.addEventListener('click', () => this.limpiarBusqueda());
+        }
+
+        // Event delegation
         document.addEventListener('click', (e) => {
             if (e.target.closest('.estado-pedido')) {
                 const select = e.target.closest('.estado-pedido');
@@ -44,111 +295,204 @@ class AdminManager {
             if (e.target.closest('.ver-pagos')) {
                 const btn = e.target.closest('.ver-pagos');
                 this.verPagosPedido(btn.dataset.pedidoId);
-    }
-        });
+            }
 
-        // Filtro de estado de pedidos
-        document.getElementById('filtroEstado').addEventListener('change', (e) => {
-            this.filtroEstado = e.target.value;
-            this.renderizarPedidos();
-        });
+            if (e.target.closest('.eliminar-pedido')) {
+                const btn = e.target.closest('.eliminar-pedido');
+                this.eliminarPedido(btn.dataset.pedidoId);
+            }
 
-        // Filtro de categoría de productos - AHORA CARGA DESDE FIREBASE
-        document.getElementById('filtroCategoria').addEventListener('change', async (e) => {
-            this.filtroCategoria = e.target.value;
-            await this.cargarProductosPorCategoria(); 
-        });
-
-        // Guardar producto
-        document.getElementById('guardarProducto').addEventListener('click', () => {
-            this.guardarProducto();
-        });
-
-        // Limpiar formulario al abrir modal para nuevo producto
-        document.getElementById('modalProducto').addEventListener('show.bs.modal', () => {
-            if (!this.currentProductoId) {
-                this.limpiarFormularioProducto();
+            if (e.target.closest('.seleccionar-pedido')) {
+                const checkbox = e.target.closest('.seleccionar-pedido');
+                this.toggleSeleccionPedido(checkbox.dataset.pedidoId, checkbox.checked);
             }
         });
 
-        // Limpiar ID al cerrar modal
-        document.getElementById('modalProducto').addEventListener('hidden.bs.modal', () => {
-            this.currentProductoId = null;
-            this.limpiarFormularioProducto();
-        });
-    }
-      
+        // Botón eliminar seleccionados
+        const btnEliminarSeleccionados = document.getElementById('btnEliminarSeleccionados');
+        if (btnEliminarSeleccionados) {
+            btnEliminarSeleccionados.addEventListener('click', () => {
+                this.eliminarPedidosSeleccionados();
+            });
+        }
+
+        // Filtro de estado de pedidos
+        const filtroEstado = document.getElementById('filtroEstado');
+        if (filtroEstado) {
+            filtroEstado.addEventListener('change', (e) => {
+                this.filtroEstado = e.target.value;
+                this.renderizarPedidos();
+            });
+        }
         
-//  NUEVA FUNCIÓN: Ver pagos del pedido 
-async verPagosPedido(pedidoId) {
-  try {
-    const pagos = await fb.obtenerPagosPorPedido(pedidoId);
-    
-    let contenidoPagos = '';
-    if (pagos.length === 0) {
-      contenidoPagos = '<p class="text-muted">No hay información de pagos para este pedido.</p>';
-    } else {
-      contenidoPagos = pagos.map(pago => `
-        <div class="border rounded p-3 mb-2">
-          <div class="d-flex justify-content-between">
-            <div>
-              <strong>Método:</strong> ${pago.metodoPago}<br>
-              <strong>Monto:</strong> $${pago.monto?.toFixed(2) || '0.00'}<br>
-              <strong>Estado:</strong> <span class="badge bg-${pago.estado === 'approved' ? 'success' : 'warning'}">${pago.estado || 'pendiente'}</span>
-            </div>
-            <div class="text-end">
-              <small class="text-muted">${this.formatearFecha(pago.fechaCreacion)}</small>
-              ${pago.paymentId ? `<br><small><strong>ID Pago:</strong> ${pago.paymentId.substring(0, 8)}</small>` : ''}
-            </div>
-          </div>
-        </div>
-      `).join('');
+                // Event listeners para código de barras (AGREGAR ANTES DE // Guardar producto)
+        const barcodeInput = document.getElementById('adminBarcodeInput');
+        const barcodeBtn = document.getElementById('adminBarcodeBtn');
+        const limpiarBarcodeBtn = document.getElementById('limpiarBarcodeBtn');
+        
+        if (barcodeInput) {
+            barcodeInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.buscarPorCodigoBarras();
+                }
+            });
+            barcodeInput.addEventListener('input', () => {
+                limpiarBarcodeBtn.style.display = barcodeInput.value.length ? 'inline-flex' : 'none';
+            });
+        }
+        
+        if (barcodeBtn) {
+            barcodeBtn.addEventListener('click', () => this.buscarPorCodigoBarras());
+        }
+        
+        if (limpiarBarcodeBtn) {
+            limpiarBarcodeBtn.addEventListener('click', () => this.limpiarBusquedaBarcode());
+        }
+        // Guardar producto
+        const guardarBtn = document.getElementById('guardarProducto');
+        if (guardarBtn) {
+            guardarBtn.addEventListener('click', () => this.guardarProducto());
+        }
+
+        // Limpiar formulario al abrir modal
+        const modalProducto = document.getElementById('modalProducto');
+        if (modalProducto) {
+            modalProducto.addEventListener('show.bs.modal', () => {
+                if (!this.currentProductoId) {
+                    this.limpiarFormularioProducto();
+                }
+            });
+
+            modalProducto.addEventListener('hidden.bs.modal', () => {
+                this.currentProductoId = null;
+                this.limpiarFormularioProducto();
+            });
+        }
     }
-    
-    // Mostrar modal con información de pagos
-    const modalHTML = `
-      <div class="modal fade" id="modalPagos" tabindex="-1">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">Pagos - Pedido #${pedidoId.substring(0, 8)}</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-              ${contenidoPagos}
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-    
-    // Remover modal anterior si existe
-    const modalAnterior = document.getElementById('modalPagos');
-    if (modalAnterior) {
-      modalAnterior.remove();
+
+    // ==================== VER PAGOS DEL PEDIDO ====================
+
+    async verPagosPedido(pedidoId) {
+        try {
+            const pagos = await fb.obtenerPagosPorPedido(pedidoId);
+            
+            let contenidoPagos = '';
+            if (pagos.length === 0) {
+                contenidoPagos = '<p class="text-muted">No hay información de pagos para este pedido.</p>';
+            } else {
+                contenidoPagos = pagos.map(pago => `
+                    <div class="border rounded p-3 mb-2">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong>Método:</strong> ${pago.metodoPago}<br>
+                                <strong>Monto:</strong> $${pago.monto?.toFixed(2) || '0.00'}<br>
+                                <strong>Estado:</strong> <span class="badge bg-${pago.estado === 'approved' ? 'success' : 'warning'}">${pago.estado || 'pendiente'}</span>
+                            </div>
+                            <div class="text-end">
+                                <small class="text-muted">${this.formatearFecha(pago.fechaCreacion)}</small>
+                                ${pago.paymentId ? `<br><small><strong>ID Pago:</strong> ${pago.paymentId.substring(0, 8)}</small>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            const modalHTML = `
+                <div class="modal fade" id="modalPagos" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Pagos - Pedido #${pedidoId.substring(0, 8)}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                ${contenidoPagos}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const modalAnterior = document.getElementById('modalPagos');
+            if (modalAnterior) modalAnterior.remove();
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            const modal = new bootstrap.Modal(document.getElementById('modalPagos'));
+            modal.show();
+            
+        } catch (error) {
+            console.error('Error cargando pagos:', error);
+            this.mostrarMensaje('Error al cargar la información de pagos', 'danger');
+        }
     }
-    
-    // Agregar nuevo modal al DOM
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
-    // Mostrar modal
-    const modal = new bootstrap.Modal(document.getElementById('modalPagos'));
-    modal.show();
-    
-  } catch (error) {
-    console.error('Error cargando pagos:', error);
-    this.mostrarMensaje('Error al cargar la información de pagos', 'danger');
-  }
+
+    // ==================== CARGA DE DATOS ====================
+
+   // ==================== CARGA DE DATOS ====================
+
+async cargarDatosIniciales() {
+    try {
+        console.log('Cargando datos iniciales...');
+        await this.cargarPedidos();
+        await this.cargarCategorias();
+        await this.cargarProductos();
+        console.log('Datos cargados correctamente');
+    } catch (error) {
+        console.error('Error cargando datos iniciales:', error);
+        this.mostrarError('Error al cargar los datos iniciales');
+    }
 }
 
-
-    async cargarDatosIniciales() {
-        await Promise.all([
-            this.cargarPedidos(),
-            this.cargarCategorias(), // Cambiar esto - cargar categorías primero
-            this.cargarProductosPorCategoria() // Cambiar esto - cargar productos después
-        ]);
+async cargarPedidos() {
+    if (this.isLoading) return;
+    
+    this.isLoading = true;
+    this.mostrarCargaPedidos();
+    
+    try {
+        console.log('Cargando pedidos...');
+        this.pedidos = await fb.obtenerPedidos();
+        console.log(`Pedidos cargados: ${this.pedidos.length}`);
+        this.renderizarPedidos();
+    } catch (error) {
+        console.error('Error cargando pedidos:', error);
+        this.mostrarErrorPedidos('Error al cargar los pedidos');
+    } finally {
+        this.isLoading = false;
     }
+}
+
+async cargarCategorias() {
+    try {
+        console.log('Cargando categorías...');
+        this.categorias = await fb.obtenerCategorias();
+        console.log(`Categorías cargadas: ${this.categorias.length}`);
+        this.crearFiltroCategorias();
+    } catch (error) {
+        console.error('Error cargando categorías:', error);
+        this.mostrarMensaje('Error al cargar las categorías', 'warning');
+    }
+}
+
+async cargarProductos() {
+    if (this.isLoading) return;
+    
+    this.isLoading = true;
+    this.mostrarCargaProductos();
+    
+    try {
+        console.log('Cargando productos desde Firebase...');
+        this.productosOriginales = await fb.obtenerProductos();
+        console.log(`Productos cargados: ${this.productosOriginales.length}`);
+        this.filtrarProductos();
+    } catch (error) {
+        console.error('Error cargando productos:', error);
+        this.mostrarErrorProductos('Error al cargar los productos: ' + error.message);
+    } finally {
+        this.isLoading = false;
+    }
+}
 
     async cargarPedidos() {
         if (this.isLoading) return;
@@ -167,7 +511,6 @@ async verPagosPedido(pedidoId) {
         }
     }
 
-    // NUEVO MÉTODO: Cargar categorías desde Firebase
     async cargarCategorias() {
         try {
             this.categorias = await fb.obtenerCategorias();
@@ -178,7 +521,6 @@ async verPagosPedido(pedidoId) {
         }
     }
 
-    // MÉTODO MODIFICADO: Ahora carga solo los productos de la categoría seleccionada
     async cargarProductosPorCategoria() {
         if (this.isLoading) return;
         
@@ -186,10 +528,8 @@ async verPagosPedido(pedidoId) {
         this.mostrarCargaProductos();
         
         try {
-            // SOLO CARGAR PRODUCTOS DE LA CATEGORÍA SELECCIONADA
-            this.productos = await fb.obtenerProductosPorCategoria(this.filtroCategoria);
-            this.productosFiltrados = [...this.productos]; // Para consistencia
-            this.renderizarProductos();
+            this.productosOriginales = await fb.obtenerProductos();
+            this.filtrarProductos();
         } catch (error) {
             console.error('Error cargando productos:', error);
             this.mostrarErrorProductos('Error al cargar los productos');
@@ -198,40 +538,44 @@ async verPagosPedido(pedidoId) {
         }
     }
 
+    // ==================== FILTRO DE CATEGORÍAS ====================
+
     crearFiltroCategorias() {
         const filtroCategoria = document.getElementById('filtroCategoria');
         if (!filtroCategoria) return;
 
-        // Limpiar opciones existentes (excepto la primera)
         while (filtroCategoria.children.length > 1) {
             filtroCategoria.removeChild(filtroCategoria.lastChild);
         }
 
-        // Agregar categorías desde Firebase
         this.categorias.forEach(categoria => {
             const option = document.createElement('option');
             option.value = categoria;
             option.textContent = this.formatearCategoria(categoria);
             filtroCategoria.appendChild(option);
         });
+        
+        if (this.categoriaChangeHandler) {
+            filtroCategoria.removeEventListener('change', this.categoriaChangeHandler);
+        }
+        this.categoriaChangeHandler = () => {
+            this.filtroCategoria = filtroCategoria.value;
+            this.filtrarProductos();
+        };
+        filtroCategoria.addEventListener('change', this.categoriaChangeHandler);
     }
 
     formatearCategoria(categoria) {
         return categoria.charAt(0).toUpperCase() + categoria.slice(1);
     }
 
-    // ELIMINAR ESTE MÉTODO - ya no se necesita filtrar localmente
-    // filtrarProductos() {
-    //     // Este método ya no es necesario porque cargamos directamente desde Firebase
-    // }
+    // ==================== RENDERIZADO DE PEDIDOS ====================
 
     renderizarPedidos() {
         const container = document.getElementById('listaPedidos');
         if (!container) return;
 
-        const pedidosFiltrados = this.filtroEstado === 'todos' 
-            ? this.pedidos 
-            : this.pedidos.filter(p => p.estado === this.filtroEstado);
+        const pedidosFiltrados = this.obtenerPedidosFiltrados();
 
         if (pedidosFiltrados.length === 0) {
             container.innerHTML = `
@@ -242,7 +586,21 @@ async verPagosPedido(pedidoId) {
             return;
         }
 
+        const selectAllHtml = `
+            <div class="mb-3 d-flex justify-content-between align-items-center">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="seleccionarTodosPedidos" ${this.pedidosSeleccionados.size === pedidosFiltrados.length && pedidosFiltrados.length > 0 ? 'checked' : ''}>
+                    <label class="form-check-label" for="seleccionarTodosPedidos">
+                        Seleccionar todos (${pedidosFiltrados.length})
+                    </label>
+                </div>
+            </div>
+        `;
+        
         const fragment = document.createDocumentFragment();
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = selectAllHtml;
+        fragment.appendChild(wrapper.firstChild);
         
         pedidosFiltrados.forEach(pedido => {
             const pedidoElement = this.crearElementoPedido(pedido);
@@ -251,6 +609,13 @@ async verPagosPedido(pedidoId) {
 
         container.innerHTML = '';
         container.appendChild(fragment);
+        
+        const selectAllCheckbox = document.getElementById('seleccionarTodosPedidos');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', (e) => {
+                this.seleccionarTodosPedidos(e.target.checked);
+            });
+        }
     }
 
     crearElementoPedido(pedido) {
@@ -262,174 +627,122 @@ async verPagosPedido(pedidoId) {
         const estadoPago = pedido.estadoPago || 'pendiente';
         const badgePagoColor = estadoPago === 'pagado' ? 'success' : estadoPago === 'pendiente' ? 'warning' : 'secondary';
         
+        const totalCompra = pedido.total || this.calcularTotalPedido(pedido.productos);
+        const isSelected = this.pedidosSeleccionados.has(pedido.id);
+        
         div.innerHTML = `
-    <div class="card-body">
-    <div class="d-flex justify-content-between align-items-start">
-    <div class="flex-grow-1">
-        <h5 class="card-title">Pedido #${pedido.id.substring(0, 8)}</h5>
-        <p class="card-text mb-1"><strong>Cliente:</strong> ${cliente.nombre || 'N/A'}</p>
-        <p class="card-text mb-1"><strong>Teléfono:</strong> ${cliente.telefono || 'N/A'}</p>
-        <p class="card-text mb-1"><strong>Fecha:</strong> ${fecha}</p>
-        <p class="card-text mb-1"><strong>Total:</strong> $${pedido.total?.toFixed(2) || '0.00'}</p>
-        <!-- ✅ NUEVA LÍNEA: Método de pago -->
-        <p class="card-text mb-1"><strong>Método pago:</strong> ${pedido.metodoPago || 'N/A'}</p>
-    </div>
-    <div class="text-end ms-3">
-        <!-- ✅ MANTÉN tu badge de estado existente -->
-        <span class="badge bg-${this.getBadgeColor(pedido.estado)} mb-2">${pedido.estado || 'pendiente'}</span>
-        
-        <!-- ✅ NUEVO: Badge de estado de pago (AGREGA ESTA LÍNEA) -->
-        <span class="badge bg-${badgePagoColor} mb-2">Pago: ${estadoPago}</span>
-        
-        <!-- ✅ MANTÉN tu select de estado existente -->
-        <select class="form-select form-select-sm estado-pedido" data-pedido-id="${pedido.id}">
-            <option value="pendiente" ${pedido.estado === 'pendiente' ? 'selected' : ''}>Pendiente</option>
-            <option value="confirmado" ${pedido.estado === 'confirmado' ? 'selected' : ''}>Confirmado</option>
-            <option value="enviado" ${pedido.estado === 'enviado' ? 'selected' : ''}>Enviado</option>
-            <option value="entregado" ${pedido.estado === 'entregado' ? 'selected' : ''}>Entregado</option>
-        </select>
-        
-        <!-- ✅ NUEVO: Botón para ver pagos (AGREGA ESTE BOTÓN) -->
-        <button class="btn btn-sm btn-outline-info mt-2 ver-pagos" data-pedido-id="${pedido.id}">
-            <i class="fas fa-money-bill me-1"></i>Ver Pagos
-        </button>
-    </div>
-    </div>
-    
-    <!-- ✅ MANTÉN el resto de tu HTML existente para productos -->
-    <div class="mt-3">
-      <h6>Productos:</h6>
-      <div class="table-responsive">
-        <table class="table table-sm table-bordered">
-          <thead class="table-light">
-            <tr>
-              <th>Producto</th>
-              <th width="80">Cantidad</th>
-              <th width="100">Precio</th>
-              <th width="100">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${this.renderizarProductosPedido(pedido.productos)}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-`;
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input seleccionar-pedido" type="checkbox" 
+                                   data-pedido-id="${pedido.id}" ${isSelected ? 'checked' : ''}>
+                            <label class="form-check-label">
+                                <h5 class="card-title d-inline-block mb-0">Pedido #${pedido.id.substring(0, 8)}</h5>
+                            </label>
+                        </div>
+                        <p class="card-text mb-1"><strong>Cliente:</strong> ${cliente.nombre || 'N/A'}</p>
+                        <p class="card-text mb-1"><strong>Teléfono:</strong> ${cliente.telefono || 'N/A'}</p>
+                        <p class="card-text mb-1"><strong>Fecha:</strong> ${fecha}</p>
+                        <p class="card-text mb-1"><strong>Total compra:</strong> <span class="fw-bold text-success">$${totalCompra.toFixed(2)}</span></p>
+                        <p class="card-text mb-1"><strong>Método pago:</strong> ${pedido.metodoPago || 'N/A'}</p>
+                    </div>
+                    <div class="text-end ms-3">
+                        <span class="badge bg-${this.getBadgeColor(pedido.estado)} mb-2 d-block">${pedido.estado || 'pendiente'}</span>
+                        <span class="badge bg-${badgePagoColor} mb-2 d-block">Pago: ${estadoPago}</span>
+                        <select class="form-select form-select-sm estado-pedido mb-2" data-pedido-id="${pedido.id}">
+                            <option value="pendiente" ${pedido.estado === 'pendiente' ? 'selected' : ''}>Pendiente</option>
+                            <option value="confirmado" ${pedido.estado === 'confirmado' ? 'selected' : ''}>Confirmado</option>
+                            <option value="enviado" ${pedido.estado === 'enviado' ? 'selected' : ''}>Enviado</option>
+                            <option value="entregado" ${pedido.estado === 'entregado' ? 'selected' : ''}>Entregado</option>
+                        </select>
+                        <div class="btn-group-vertical w-100">
+                            <button class="btn btn-sm btn-outline-info ver-pagos" data-pedido-id="${pedido.id}">
+                                <i class="fas fa-money-bill me-1"></i>Ver Pagos
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger eliminar-pedido mt-1" data-pedido-id="${pedido.id}">
+                                <i class="fas fa-trash-alt me-1"></i>Eliminar Pedido
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <h6>Productos:</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Código de Barras</th>
+                                    <th>Producto</th>
+                                    <th width="80">Cantidad</th>
+                                    <th width="100">Precio</th>
+                                    <th width="100">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${this.renderizarProductosPedido(pedido.productos)}
+                            </tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    <td colspan="4" class="text-end fw-bold">TOTAL:</td>
+                                    <td class="text-end fw-bold text-success">$${totalCompra.toFixed(2)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
 
         return div;
     }
 
+    calcularTotalPedido(productos) {
+        if (!productos || !Array.isArray(productos)) return 0;
+        
+        return productos.reduce((total, p) => {
+            let cantidad = p.cantidad || 0;
+            if (p.cantidadPersonalizada && p.cantidadPersonalizadaValor) {
+                cantidad = p.cantidadPersonalizadaValor;
+            }
+            return total + ((p.precio || 0) * cantidad);
+        }, 0);
+    }
+
     renderizarProductosPedido(productos) {
         if (!productos || !Array.isArray(productos)) {
-            return '<tr><td colspan="4" class="text-center">No hay información de productos</td></tr>';
+            return '<tr><td colspan="5" class="text-center">No hay información de productos</td></tr>';
         }
 
-        return productos.map(p => `
-            <tr>
-                <td>${p.nombre || 'Producto'}</td>
-                <td class="text-center">${p.cantidad || 0}</td>
-                <td class="text-end">$${(p.precio || 0).toFixed(2)}</td>
-                <td class="text-end">$${((p.precio || 0) * (p.cantidad || 0)).toFixed(2)}</td>
-            </tr>
-        `).join('');
-    }
-
-    formatearFecha(fechaFirestore) {
-        try {
-            if (fechaFirestore?.toDate) {
-                return fechaFirestore.toDate().toLocaleDateString('es-MX');
+        return productos.map(p => {
+            const codigoBarras = p.codigoBarras || p.codigo || 'N/A';
+            let cantidad = p.cantidad || 0;
+            let unidad = '';
+            
+            if (p.cantidadPersonalizada && p.cantidadPersonalizadaValor) {
+                cantidad = p.cantidadPersonalizadaValor;
+                unidad = ' kg';
             }
-            return 'Fecha inválida';
-        } catch (error) {
-            return 'Fecha no disponible';
-        }
+            
+            const subtotal = (p.precio || 0) * cantidad;
+            
+            return `
+                <tr>
+                    <td><small class="font-monospace">${this.escapeHtml(codigoBarras)}</small></td>
+                    <td>${this.escapeHtml(p.nombre || 'Producto')}</td>
+                    <td class="text-center">${cantidad}${unidad}</td>
+                    <td class="text-end">$${(p.precio || 0).toFixed(2)}</td>
+                    <td class="text-end">$${subtotal.toFixed(2)}</td>
+                </tr>
+            `;
+        }).join('');
     }
 
-    getBadgeColor(estado) {
-        const colores = {
-            pendiente: 'warning',
-            confirmado: 'info',
-            enviado: 'primary',
-            entregado: 'success'
-        };
-        return colores[estado] || 'secondary';
-    }
-
-    async actualizarEstadoPedido(pedidoId, nuevoEstado) {
-  try {
-    // Obtener el pedido actual de la lista local
-    const pedido = this.pedidos.find(p => p.id === pedidoId);
-    if (!pedido) {
-      throw new Error('Pedido no encontrado');
-    }
-    const estadoAnterior = pedido.estado;
-
-    // Actualizar estado en Firebase
-    await fb.actualizarEstadoPedido(pedidoId, nuevoEstado);
-    
-    // Si el estado cambió a "entregado" y no lo era antes, restar stock
-    if (nuevoEstado === 'entregado' && estadoAnterior !== 'entregado') {
-      await this.restarStockDePedido(pedido);
-      // Refrescar la lista de productos en el admin para mostrar stock actualizado
-      await this.cargarProductosPorCategoria();
-    }
-
-    // Actualizar estado en la lista local
-    pedido.estado = nuevoEstado;
-
-    // Actualizar la UI del badge
-    const badge = document.querySelector(`[data-pedido-id="${pedidoId}"]`).closest('.card').querySelector('.badge');
-    if (badge) {
-      badge.className = `badge bg-${this.getBadgeColor(nuevoEstado)} mb-2 d-block`;
-      badge.textContent = nuevoEstado;
-    }
-    
-    this.mostrarMensaje('Estado actualizado correctamente', 'success');
-  } catch (error) {
-    console.error('Error actualizando estado:', error);
-    this.mostrarMensaje('Error al actualizar el estado o stock: ' + error.message, 'danger');
-  }
-}
-    // Método para restar stock de un pedido cuando se entrega
-async restarStockDePedido(pedido) {
-  if (!pedido.productos || pedido.productos.length === 0) return;
-
-  for (const item of pedido.productos) {
-    // Determinar cantidad real (para productos por kg se usa cantidadPersonalizadaValor)
-    let cantidadReal = item.cantidad;
-    if (item.cantidadPersonalizada && item.cantidadPersonalizadaValor) {
-      cantidadReal = item.cantidadPersonalizadaValor;
-    }
-
-    try {
-      // Obtener el producto actual desde Firebase
-      const producto = await fb.obtenerProductoPorId(item.id);
-      if (!producto) {
-        console.error(`Producto ${item.id} no encontrado, no se puede descontar stock`);
-        continue;
-      }
-      const nuevoStock = (producto.stock || 0) - cantidadReal;
-      if (nuevoStock < 0) {
-        console.warn(`Stock negativo para ${item.nombre}, ajustando a 0`);
-        await fb.actualizarProducto(item.id, { stock: 0 });
-      } else {
-        await fb.actualizarProducto(item.id, { stock: nuevoStock });
-      }
-    } catch (error) {
-      console.error(`Error actualizando stock de ${item.id}:`, error);
-      throw error; // Detener el proceso si falla
-    }
-  }
-}
+    // ==================== RENDERIZADO DE PRODUCTOS ====================
 
     renderizarProductos() {
         const container = document.getElementById('listaProductos');
         if (!container) return;
-
-        // Mostrar información del filtro
-        this.mostrarInfoFiltro();
 
         if (this.productos.length === 0) {
             container.innerHTML = `
@@ -437,6 +750,7 @@ async restarStockDePedido(pedido) {
                     <div class="alert alert-warning text-center">
                         <i class="fas fa-box-open me-2"></i>
                         No hay productos ${this.filtroCategoria !== 'todas' ? `en la categoría "${this.formatearCategoria(this.filtroCategoria)}"` : 'disponibles'}
+                        ${this.terminoBusqueda ? ` que coincidan con "${this.escapeHtml(this.terminoBusqueda)}"` : ''}
                     </div>
                 </div>
             `;
@@ -454,89 +768,105 @@ async restarStockDePedido(pedido) {
         container.appendChild(fragment);
     }
 
-    mostrarInfoFiltro() {
-        const infoFiltro = document.getElementById('infoFiltroProductos');
-        if (!infoFiltro) return;
-
-        const totalProductos = this.productos.length;
-        
-        let infoText = `Mostrando ${totalProductos} productos`;
-        if (this.filtroCategoria !== 'todas') {
-            infoText += ` en <strong>${this.formatearCategoria(this.filtroCategoria)}</strong>`;
-        } else {
-            infoText += ` en <strong>todas las categorías</strong>`;
-        }
-
-        infoFiltro.innerHTML = infoText;
-    }
-
     crearElementoProducto(producto) {
-        const col = document.createElement('div');
-        col.className = 'col-md-6 col-lg-4 mb-4';
-        
-        col.innerHTML = `
-            <div class="card h-100 tarjeta">
-                <div class="tarjeta-img-container">
-                    <img src="img/${producto.imagen}" class="card-img-top" alt="${producto.nombre}" 
-                         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbiBubyBkaXNwb25pYmxlPC90ZXh0Pjwvc3ZnPg=='">
-                </div>
-                <div class="card-body d-flex flex-column">
-                    <h5 class="card-title">${this.escapeHtml(producto.nombre)}</h5>
-                    <p class="card-text flex-grow-1">${this.escapeHtml(producto.descripcion) || 'Sin descripción'}</p>
-                    <div class="mt-auto">
-                        <p class="price">$${producto.precio?.toFixed(2) || '0.00'}</p>
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="badge bg-${producto.stock > 0 ? 'success' : 'danger'}">
-                                Stock: ${producto.stock || 0}
-                            </span>
-                            <span class="badge bg-secondary">${producto.categoria || 'Sin categoría'}</span>
-                        </div>
-                        ${producto.destacado ? '<span class="badge bg-warning mb-2">Destacado</span>' : ''}
-                        
-                        <div class="btn-group w-100">
-                            <button class="btn btn-outline-primary btn-sm editar-producto" data-producto-id="${producto.id}">
-                                <i class="fas fa-edit"></i> Editar
-                            </button>
-                            <button class="btn btn-outline-danger btn-sm eliminar-producto" data-producto-id="${producto.id}">
-                                <i class="fas fa-trash"></i> Eliminar
-                            </button>
-                        </div>
+    const col = document.createElement('div');
+    col.setAttribute('data-producto-id', producto.id);
+    col.className = 'col-md-6 col-lg-4 mb-4';
+    
+    const codigoBarras = producto.codigoBarras || producto.codigo || 'Sin código';
+    
+    col.innerHTML = `
+        <div class="card h-100 tarjeta">
+            <div class="tarjeta-img-container">
+                <img src="img/${producto.imagen}" class="card-img-top" alt="${producto.nombre}" 
+                     onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbiBubyBkaXNwb25pYmxlPC90ZXh0Pjwvc3ZnPg==">
+            </div>
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title">${this.escapeHtml(producto.nombre)}</h5>
+                <p class="card-text flex-grow-1">${this.escapeHtml(producto.descripcion) || 'Sin descripción'}</p>
+                <div class="mt-auto">
+                    <p class="price">$${producto.precio?.toFixed(2) || '0.00'}</p>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="badge bg-${producto.stock > 0 ? 'success' : 'danger'}">
+                            Stock: ${producto.stock || 0}
+                        </span>
+                        <span class="badge bg-secondary">${producto.categoria || 'Sin categoría'}</span>
+                    </div>
+                    <div class="mb-2">
+                        <small class="text-muted font-monospace d-block">📦 Código: ${this.escapeHtml(codigoBarras)}</small>
+                        ${producto.proveedor ? `<small class="text-muted d-block">🏭 Proveedor: ${this.escapeHtml(producto.proveedor)}</small>` : ''}
+                        ${producto.marca ? `<small class="text-muted d-block">⭐ Marca: ${this.escapeHtml(producto.marca)}</small>` : ''}
+                    </div>
+                    ${producto.destacado ? '<span class="badge bg-warning mb-2">Destacado</span>' : ''}
+                    
+                    <div class="btn-group w-100">
+                        <button class="btn btn-outline-primary btn-sm editar-producto" data-producto-id="${producto.id}">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm eliminar-producto" data-producto-id="${producto.id}">
+                            <i class="fas fa-trash"></i> Eliminar
+                        </button>
                     </div>
                 </div>
             </div>
-        `;
+        </div>
+    `;
 
-        return col;
-    }
+    return col;
+}
+
+    // ==================== CRUD DE PRODUCTOS ====================
 
     async editarProducto(productoId) {
-        try {
-            const producto = this.productos.find(p => p.id === productoId);
-            if (!producto) {
-                this.mostrarMensaje('Producto no encontrado', 'warning');
-                return;
-            }
-
-            this.currentProductoId = productoId;
-            
-            document.getElementById('productoId').value = producto.id;
-            document.getElementById('productoNombre').value = producto.nombre || '';
-            document.getElementById('productoPrecio').value = producto.precio || '';
-            document.getElementById('productoCategoria').value = producto.categoria || '';
-            document.getElementById('productoStock').value = producto.stock || 0;
-            document.getElementById('productoImagen').value = producto.imagen || '';
-            document.getElementById('productoDescripcion').value = producto.descripcion || '';
-            document.getElementById('productoDestacado').checked = producto.destacado || false;
-
-            document.getElementById('modalProductoTitulo').textContent = 'Editar Producto';
-
-            const modal = new bootstrap.Modal(document.getElementById('modalProducto'));
-            modal.show();
-        } catch (error) {
-            console.error('Error preparando edición:', error);
-            this.mostrarMensaje('Error al cargar el producto para editar', 'danger');
+    try {
+        const producto = this.productos.find(p => p.id === productoId);
+        if (!producto) {
+            this.mostrarMensaje('Producto no encontrado', 'warning');
+            return;
         }
+
+        this.currentProductoId = productoId;
+        
+        // Datos básicos
+        document.getElementById('productoId').value = producto.id;
+        document.getElementById('productoNombre').value = producto.nombre || '';
+        document.getElementById('productoPrecio').value = producto.precio || '';
+        document.getElementById('productoCategoria').value = producto.categoria || '';
+        document.getElementById('productoStock').value = producto.stock || 0;
+        document.getElementById('productoImagen').value = producto.imagen || '';
+        document.getElementById('productoDescripcion').value = producto.descripcion || '';
+        document.getElementById('productoDestacado').checked = producto.destacado || false;
+        
+        // NUEVOS CAMPOS
+        document.getElementById('productoCodigoBarras').value = producto.codigoBarras || '';
+        document.getElementById('productoProveedor').value = producto.proveedor || '';
+        document.getElementById('productoMarca').value = producto.marca || '';
+        document.getElementById('productoPesoVolumen').value = producto.pesoVolumen || '';
+        document.getElementById('productoUnidadMedida').value = producto.unidadMedida || 'PZ';
+        document.getElementById('productoPrecioCompra').value = producto.precioCompra || '';
+        document.getElementById('productoPuntoReorden').value = producto.puntoReorden || '';
+        
+        // Formatear fecha para input date (YYYY-MM-DD)
+        if (producto.fechaVencimiento) {
+            let fechaVencimiento = producto.fechaVencimiento;
+            // Si es objeto Firestore Timestamp
+            if (fechaVencimiento && fechaVencimiento.toDate) {
+                fechaVencimiento = fechaVencimiento.toDate().toISOString().split('T')[0];
+            }
+            document.getElementById('productoFechaVencimiento').value = fechaVencimiento;
+        } else {
+            document.getElementById('productoFechaVencimiento').value = '';
+        }
+
+        document.getElementById('modalProductoTitulo').textContent = 'Editar Producto';
+
+        const modal = new bootstrap.Modal(document.getElementById('modalProducto'));
+        modal.show();
+    } catch (error) {
+        console.error('Error preparando edición:', error);
+        this.mostrarMensaje('Error al cargar el producto para editar', 'danger');
     }
+}
 
     async eliminarProducto(productoId) {
         if (!confirm('¿Estás seguro de que quieres eliminar este producto?')) {
@@ -545,10 +875,7 @@ async restarStockDePedido(pedido) {
 
         try {
             await fb.eliminarProducto(productoId);
-            
-            // Recargar los productos de la categoría actual después de eliminar
             await this.cargarProductosPorCategoria();
-            
             this.mostrarMensaje('Producto eliminado correctamente', 'success');
         } catch (error) {
             console.error('Error eliminando producto:', error);
@@ -556,30 +883,47 @@ async restarStockDePedido(pedido) {
         }
     }
 
-   async guardarProducto() {
+    async guardarProducto() {
     const form = document.getElementById('formProducto');
     
-    // Validar formulario
     if (!form.checkValidity()) {
         form.reportValidity();
         this.mostrarMensaje('Por favor, completa todos los campos requeridos', 'warning');
         return;
     }
 
-    // Obtener datos del formulario
     const productoId = document.getElementById('productoId').value;
+    
+    // Obtener fecha de vencimiento
+    let fechaVencimiento = document.getElementById('productoFechaVencimiento').value;
+    
     const productoData = {
         nombre: document.getElementById('productoNombre').value.trim(),
         precio: parseFloat(document.getElementById('productoPrecio').value),
         categoria: document.getElementById('productoCategoria').value,
-        stock: parseInt(document.getElementById('productoStock').value),
+        stock: parseFloat(document.getElementById('productoStock').value),
         imagen: document.getElementById('productoImagen').value.trim(),
         descripcion: document.getElementById('productoDescripcion').value.trim(),
         destacado: document.getElementById('productoDestacado').checked,
-        fechaActualizacion: new Date() // Agregar timestamp
+        
+        // NUEVOS CAMPOS
+        codigoBarras: document.getElementById('productoCodigoBarras').value.trim(),
+        proveedor: document.getElementById('productoProveedor').value.trim(),
+        marca: document.getElementById('productoMarca').value.trim(),
+        pesoVolumen: parseFloat(document.getElementById('productoPesoVolumen').value) || null,
+        unidadMedida: document.getElementById('productoUnidadMedida').value,
+        precioCompra: parseFloat(document.getElementById('productoPrecioCompra').value) || null,
+        puntoReorden: parseInt(document.getElementById('productoPuntoReorden').value) || 0,
+        
+        fechaActualizacion: new Date()
     };
+    
+    // Solo agregar fechaVencimiento si tiene valor
+    if (fechaVencimiento) {
+        productoData.fechaVencimiento = fechaVencimiento;
+    }
 
-    // Validaciones adicionales
+    // Validaciones
     if (productoData.precio <= 0) {
         this.mostrarMensaje('El precio debe ser mayor a 0', 'warning');
         document.getElementById('productoPrecio').focus();
@@ -598,55 +942,131 @@ async restarStockDePedido(pedido) {
         return;
     }
 
-    // Mostrar indicador de carga
     const guardarBtn = document.getElementById('guardarProducto');
     const originalText = guardarBtn.innerHTML;
     guardarBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Guardando...';
     guardarBtn.disabled = true;
 
     try {
-        let resultado;
         if (productoId) {
-            // Actualizar producto existente
-            resultado = await fb.actualizarProducto(productoId, productoData);
+            await fb.actualizarProducto(productoId, productoData);
             this.mostrarMensaje('✅ Producto actualizado correctamente', 'success');
         } else {
-            // Agregar nuevo producto
-            resultado = await fb.agregarProducto(productoData);
+            // Para nuevo producto, agregar fechaCreacion
+            productoData.fechaCreacion = new Date();
+            await fb.agregarProducto(productoData);
             this.mostrarMensaje('✅ Producto agregado correctamente', 'success');
         }
 
-        // Recargar datos después de guardar
         await Promise.all([
             this.cargarCategorias(),
             this.cargarProductosPorCategoria()
         ]);
 
-        // Cerrar modal después de un breve delay
         setTimeout(() => {
             const modal = bootstrap.Modal.getInstance(document.getElementById('modalProducto'));
-            if (modal) {
-                modal.hide();
-            }
+            if (modal) modal.hide();
         }, 1000);
 
     } catch (error) {
         console.error('Error guardando producto:', error);
         this.mostrarMensaje(`❌ Error al guardar el producto: ${error.message}`, 'danger');
     } finally {
-        // Restaurar botón
         guardarBtn.innerHTML = originalText;
         guardarBtn.disabled = false;
     }
 }
 
     limpiarFormularioProducto() {
-        document.getElementById('formProducto').reset();
-        document.getElementById('productoId').value = '';
-        document.getElementById('modalProductoTitulo').textContent = 'Agregar Producto';
+    document.getElementById('formProducto').reset();
+    document.getElementById('productoId').value = '';
+    document.getElementById('modalProductoTitulo').textContent = 'Agregar Producto';
+    
+    // Resetear valores por defecto de los nuevos campos
+    document.getElementById('productoUnidadMedida').value = 'PZ';
+    document.getElementById('productoStock').value = 0;
+    document.getElementById('productoPuntoReorden').value = 0;
+    document.getElementById('productoDestacado').checked = false;
+}
+
+    // ==================== ACTUALIZACIÓN DE PEDIDOS Y STOCK ====================
+
+    async actualizarEstadoPedido(pedidoId, nuevoEstado) {
+        try {
+            const pedido = this.pedidos.find(p => p.id === pedidoId);
+            if (!pedido) {
+                throw new Error('Pedido no encontrado');
+            }
+            const estadoAnterior = pedido.estado;
+
+            await fb.actualizarEstadoPedido(pedidoId, nuevoEstado);
+            
+            if (nuevoEstado === 'entregado' && estadoAnterior !== 'entregado') {
+                await this.restarStockDePedido(pedido);
+                await this.cargarProductosPorCategoria();
+            }
+
+            pedido.estado = nuevoEstado;
+            await this.cargarPedidos();
+            
+            this.mostrarMensaje('Estado actualizado correctamente', 'success');
+        } catch (error) {
+            console.error('Error actualizando estado:', error);
+            this.mostrarMensaje('Error al actualizar el estado o stock: ' + error.message, 'danger');
+        }
     }
 
-    // Métodos de utilidad para mostrar estados
+    async restarStockDePedido(pedido) {
+        if (!pedido.productos || pedido.productos.length === 0) return;
+
+        for (const item of pedido.productos) {
+            let cantidadReal = item.cantidad;
+            if (item.cantidadPersonalizada && item.cantidadPersonalizadaValor) {
+                cantidadReal = item.cantidadPersonalizadaValor;
+            }
+
+            try {
+                const producto = await fb.obtenerProductoPorId(item.id);
+                if (!producto) {
+                    console.error(`Producto ${item.id} no encontrado`);
+                    continue;
+                }
+                const nuevoStock = (producto.stock || 0) - cantidadReal;
+                if (nuevoStock < 0) {
+                    await fb.actualizarProducto(item.id, { stock: 0 });
+                } else {
+                    await fb.actualizarProducto(item.id, { stock: nuevoStock });
+                }
+            } catch (error) {
+                console.error(`Error actualizando stock de ${item.id}:`, error);
+                throw error;
+            }
+        }
+    }
+
+    // ==================== MÉTODOS DE UTILIDAD ====================
+
+    formatearFecha(fechaFirestore) {
+        try {
+            if (fechaFirestore?.toDate) {
+                return fechaFirestore.toDate().toLocaleDateString('es-MX');
+            }
+            return 'Fecha no disponible';
+        } catch (error) {
+            return 'Fecha no disponible';
+        }
+    }
+
+    getBadgeColor(estado) {
+        const colores = {
+            pendiente: 'warning',
+            confirmado: 'info',
+            enviado: 'primary',
+            entregado: 'success'
+        };
+        return colores[estado] || 'secondary';
+    }
+
     mostrarCargaPedidos() {
         const container = document.getElementById('listaPedidos');
         if (container) {
@@ -700,47 +1120,45 @@ async restarStockDePedido(pedido) {
     }
 
     mostrarMensaje(mensaje, tipo = 'info') {
-    // Crear contenedor de toasts si no existe
-    const toastContainer = document.getElementById('toastContainer') || this.crearToastContainer();
-    
-    const toastId = 'toast-' + Date.now();
-    const toastEl = document.createElement('div');
-    toastEl.id = toastId;
-    toastEl.className = `toast align-items-center text-bg-${tipo} border-0`;
-    toastEl.setAttribute('role', 'alert');
-    toastEl.innerHTML = `
-        <div class="d-flex">
-            <div class="toast-body">
-                <i class="fas ${this.getToastIcon(tipo)} me-2"></i>
-                ${mensaje}
+        const toastContainer = document.getElementById('toastContainer') || this.crearToastContainer();
+        
+        const toastId = 'toast-' + Date.now();
+        const toastEl = document.createElement('div');
+        toastEl.id = toastId;
+        toastEl.className = `toast align-items-center text-bg-${tipo} border-0`;
+        toastEl.setAttribute('role', 'alert');
+        toastEl.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    <i class="fas ${this.getToastIcon(tipo)} me-2"></i>
+                    ${mensaje}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
             </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-        </div>
-    `;
-    
-    toastContainer.appendChild(toastEl);
-    const toast = new bootstrap.Toast(toastEl, {
-        autohide: true,
-        delay: 3000
-    });
-    
-    toast.show();
-    
-    // Remover el toast del DOM cuando se oculte
-    toastEl.addEventListener('hidden.bs.toast', () => {
-        toastEl.remove();
-    });
-}
+        `;
+        
+        toastContainer.appendChild(toastEl);
+        const toast = new bootstrap.Toast(toastEl, {
+            autohide: true,
+            delay: 3000
+        });
+        
+        toast.show();
+        
+        toastEl.addEventListener('hidden.bs.toast', () => {
+            toastEl.remove();
+        });
+    }
 
-getToastIcon(tipo) {
-    const icons = {
-        'success': 'fa-check-circle',
-        'danger': 'fa-exclamation-triangle',
-        'warning': 'fa-exclamation-circle',
-        'info': 'fa-info-circle'
-    };
-    return icons[tipo] || 'fa-info-circle';
-}
+    getToastIcon(tipo) {
+        const icons = {
+            'success': 'fa-check-circle',
+            'danger': 'fa-exclamation-triangle',
+            'warning': 'fa-exclamation-circle',
+            'info': 'fa-info-circle'
+        };
+        return icons[tipo] || 'fa-info-circle';
+    }
 
     crearToastContainer() {
         const container = document.createElement('div');
@@ -755,13 +1173,12 @@ getToastIcon(tipo) {
     }
 
     escapeHtml(text) {
+        if (!text) return '';
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
 }
-
-
 
 // Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
@@ -773,4 +1190,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
-

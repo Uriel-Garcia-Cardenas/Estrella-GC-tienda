@@ -442,7 +442,25 @@ class ManejadorCategorias {
   // Crear card de producto (reutilizable)
   // Crear card de producto (reutilizable)
 crearCardProducto(producto) {
-  const categoriasCantidadPersonalizada = ['verduras', 'huevos', 'frutas', 'carnes'];
+  const categoriasCantidadPersonalizada = [
+    'verduras',
+    'huevos', 
+    'frutas',
+    'carnes',
+    'granos',
+    'harinas',
+    'pastas',
+    'lacteos',
+    'congelados',
+    'conservas',
+    'especias',
+    'legumbres',
+    'semillas',
+    'frutos_secos',
+    'cereales',
+    'panaderia',
+    'abarrotes'
+];
   const necesitaCantidadPersonalizada = categoriasCantidadPersonalizada.includes(producto.categoria);
   const precioPorUnidad = producto.precio;
   

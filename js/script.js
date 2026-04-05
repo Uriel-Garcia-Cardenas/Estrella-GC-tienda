@@ -296,7 +296,7 @@ document.addEventListener('DOMContentLoaded', function() {
           cantidadPersonalizada: true,
           precioBase: precioBase,
           cantidadPersonalizadaValor: cantidad,
-          unidad: 'kg',
+          unidad: unidadMedida === 'g' || unidadMedida === 'gramo' ? 'g' : 'kg',
           codigoBarras: codigoBarras
         });
       } else {
@@ -314,9 +314,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
       actualizarCarrito();
 
-      const mensaje = esCantidadPersonalizada
-        ? `${nombre} (${cantidad} kg) agregado al carrito - $${precioFinal.toFixed(2)}`
-        : `${nombre} x${cantidad} agregado al carrito`;
+  const unidadTexto = unidadMedida === 'g' || unidadMedida === 'gramo' ? 'g' : 'kg';
+  const mensaje = esCantidadPersonalizada
+    ? `${nombre} (${cantidad} ${unidadTexto}) agregado al carrito - $${precioFinal.toFixed(2)}`
+    : `${nombre} x${cantidad} agregado al carrito`;
       mostrarNotificacion(mensaje, 'success');
     });
 

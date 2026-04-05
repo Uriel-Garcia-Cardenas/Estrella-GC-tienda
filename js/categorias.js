@@ -442,26 +442,12 @@ class ManejadorCategorias {
   // Crear card de producto (reutilizable)
   // Crear card de producto (reutilizable)
 crearCardProducto(producto) {
-  const categoriasCantidadPersonalizada = [
-    'verduras',
-    'huevos', 
-    'frutas',
-    'carnes',
-    'granos',
-    'harinas',
-    'pastas',
-    'lacteos',
-    'congelados',
-    'conservas',
-    'especias',
-    'legumbres',
-    'semillas',
-    'frutos_secos',
-    'cereales',
-    'panaderia',
-    'abarrotes'
-];
-  const necesitaCantidadPersonalizada = categoriasCantidadPersonalizada.includes(producto.categoria);
+  //const categoriasCantidadPersonalizada = ['verduras', 'huevos', 'frutas', 'carnes'];
+  //const necesitaCantidadPersonalizada = categoriasCantidadPersonalizada.includes(producto.categoria);
+  //const precioPorUnidad = producto.precio;
+  const unidadMedida = (producto.unidadMedida || '').toLowerCase();
+  const unidadesPersonalizadas = ['kg', 'kilogramo', 'g', 'gramo'];
+  const necesitaCantidadPersonalizada = unidadesPersonalizadas.includes(unidadMedida);
   const precioPorUnidad = producto.precio;
   
   // Obtener código de barras (puede venir como 'codigoBarras' o 'codigo')
@@ -474,7 +460,7 @@ crearCardProducto(producto) {
         <label class="form-label small">Cantidad (kg):</label>
         <div class="input-group input-group-sm">
           <button class="btn btn-outline-secondary btn-decrementar" type="button">-</button>
-          <input type="number" class="form-control text-center cantidad-input" data-id="${producto.id}" value="1" step="0.1" min="0.1">
+          <input type="number" class="form-control text-center cantidad-input" data-id="${producto.id}" value="1" step="0.1" min="0.1"data-unidad="${unidadMedida}">
           <button class="btn btn-outline-secondary btn-incrementar" type="button">+</button>
         </div>
         <div class="precio-calculado mt-2">
@@ -505,7 +491,7 @@ crearCardProducto(producto) {
           <h3 class="card-title h5">${producto.nombre}</h3>
           <p class="card-text">${producto.descripcion || 'Sin descripción'}</p>
           ${codigoBarras ? `<small class="text-muted font-monospace d-block mb-2">Código: ${codigoBarras}</small>` : ''}
-          <p class="price">$${precioPorUnidad.toFixed(2)} ${necesitaCantidadPersonalizada ? 'por kg' : ''}</p>
+           <p class="price">$${precioPorUnidad.toFixed(2)} ${necesitaCantidadPersonalizada ? (unidadMedida === 'g' || unidadMedida === 'gramo' ? 'por 100g' : 'por kg') : ''}</p>
           ${producto.stock < 5 ? '<span class="badge bg-warning">Poco stock</span>' : ''}
           ${producto.destacado ? '<span class="badge bg-success">Destacado</span>' : ''}
           ${controlCantidad}
@@ -516,6 +502,7 @@ crearCardProducto(producto) {
                   data-nombre="${producto.nombre}" 
                   data-precio="${precioPorUnidad}"
                   data-codigo-barras="${codigoBarras}"
+                  data-unidad-medida="${unidadMedida}"
                   data-cantidad-personalizada="${necesitaCantidadPersonalizada ? 'true' : 'false'}"
                   ${producto.stock === 0 ? 'disabled' : ''}>
             <i class="fas fa-cart-plus me-2"></i>

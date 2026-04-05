@@ -709,34 +709,45 @@ async cargarProductos() {
         }, 0);
     }
 
-    renderizarProductosPedido(productos) {
-        if (!productos || !Array.isArray(productos)) {
-            return '<tr><td colspan="5" class="text-center">No hay información de productos</td></tr>';
-        }
-
-        return productos.map(p => {
-            const codigoBarras = p.codigoBarras || p.codigo || 'N/A';
-            let cantidad = p.cantidad || 0;
-            let unidad = '';
-            
-            if (p.cantidadPersonalizada && p.cantidadPersonalizadaValor) {
-                cantidad = p.cantidadPersonalizadaValor;
-                unidad = ' kg';
-            }
-            
-            const subtotal = (p.precio || 0) * cantidad;
-            
-            return `
-                <tr>
-                    <td><small class="font-monospace">${this.escapeHtml(codigoBarras)}</small></td>
-                    <td>${this.escapeHtml(p.nombre || 'Producto')}</td>
-                    <td class="text-center">${cantidad}${unidad}</td>
-                    <td class="text-end">$${(p.precio || 0).toFixed(2)}</td>
-                    <td class="text-end">$${subtotal.toFixed(2)}</td>
-                </tr>
-            `;
-        }).join('');
+   renderizarProductosPedido(productos) {
+    if (!productos || !Array.isArray(productos)) {
+        return '<tr><td colspan="5" class="text-center">No hay información de productos</td></tr>';
     }
+
+    return productos.map(p => {
+        const codigoBarras = p.codigoBarras || p.codigo || 'N/A';
+        let cantidad = p.cantidad || 0;
+        let unidad = '';
+        
+        // Determinar la unidad según el tipo de producto
+        if (p.cantidadPersonalizada && p.cantidadPersonalizadaValor) {
+            cantidad = p.cantidadPersonalizadaValor;
+            // Usar la unidad guardada en el pedido o determinar por unidadMedidaOriginal
+            const unidadMedida = (p.unidadMedidaOriginal || p.unidad || '').toLowerCase();
+            if (unidadMedida === 'g' || unidadMedida === 'gramo') {
+                unidad = ' g';
+            } else if (unidadMedida === 'kg' || unidadMedida === 'kilogramo') {
+                unidad = ' kg';
+            } else if (unidadMedida === 'l' || unidadMedida === 'litro') {
+                unidad = ' L';
+            } else {
+                unidad = p.unidad ? ` ${p.unidad}` : ' kg';
+            }
+        }
+        
+        const subtotal = (p.precio || 0) * cantidad;
+        
+        return `
+            <tr>
+                <td><small class="font-monospace">${this.escapeHtml(codigoBarras)}</small></td>
+                <td>${this.escapeHtml(p.nombre || 'Producto')}</td>
+                <td class="text-center">${cantidad}${unidad}</td>
+                <td class="text-end">$${(p.precio || 0).toFixed(2)}</td>
+                <td class="text-end">$${subtotal.toFixed(2)}</td>
+            </tr>
+        `;
+    }).join('');
+}
 
     // ==================== RENDERIZADO DE PRODUCTOS ====================
 

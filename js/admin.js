@@ -437,6 +437,7 @@ async cargarDatosIniciales() {
         await this.cargarPedidos();
         await this.cargarCategorias();
         await this.cargarProductos();
+        await this.cargarCategoriasEnSelect(); // <-- Agregar esta línea
         console.log('Datos cargados correctamente');
     } catch (error) {
         console.error('Error cargando datos iniciales:', error);
@@ -828,7 +829,127 @@ async cargarProductos() {
 
     // ==================== CRUD DE PRODUCTOS ====================
 
-    async editarProducto(productoId) {
+    // En admin.js, agrega este nuevo método para cargar categorías en el select
+async cargarCategoriasEnSelect() {
+    const selectCategoria = document.getElementById('productoCategoria');
+    if (!selectCategoria) return;
+    
+    try {
+        // Obtener categorías desde Firebase (misma fuente que categorias.js)
+        const categorias = await fb.obtenerCategorias();
+        
+        // Categorías predefinidas por si Firebase no tiene todas
+        const categoriasPredefinidas = [
+            'abarrotes', 'bebidas', 'bebidas_alcoholicas', 'botanas', 'carnes',
+            'cereales', 'condimentos', 'congelados', 'conservas', 'cuidado_bebe',
+            'cuidado_personal', 'deportes', 'dulces', 'electronica', 'enlatados',
+            'especias', 'farmacia', 'ferreteria', 'frutas', 'galletas', 'granos', 'harinas',
+            'hogar', 'huevos', 'jardin', 'juguetes', 'lacteos', 'libros',
+            'limpieza', 'mascotas', 'panaderia', 'pastas', 'postres', 'quesos', // <- Quesos agregado
+            'ropa', 'sopas', 'tabaco', 'utensilios', 'verduras'
+        ];
+        
+        // Combinar categorías de Firebase con predefinidas
+        const todasCategorias = new Set([...categoriasPredefinidas, ...categorias]);
+        const categoriasOrdenadas = Array.from(todasCategorias).sort();
+        
+        // Guardar valor seleccionado actual
+        const valorActual = selectCategoria.value;
+        
+        // Limpiar y llenar el select
+        selectCategoria.innerHTML = '<option value="">Seleccionar categoría...</option>';
+        
+        categoriasOrdenadas.forEach(categoria => {
+            const option = document.createElement('option');
+            option.value = categoria;
+            option.textContent = this.formatearNombreCategoria(categoria);
+            selectCategoria.appendChild(option);
+        });
+        
+        // Restaurar valor si existía
+        if (valorActual && categoriasOrdenadas.includes(valorActual)) {
+            selectCategoria.value = valorActual;
+        }
+        
+    } catch (error) {
+        console.error('Error cargando categorías en select:', error);
+        // Fallback: cargar solo las predefinidas
+        this.cargarCategoriasPredefinidasEnSelect();
+    }
+}
+
+// Método de respaldo para cargar categorías predefinidas
+cargarCategoriasPredefinidasEnSelect() {
+    const selectCategoria = document.getElementById('productoCategoria');
+    if (!selectCategoria) return;
+    
+    const categorias = [
+        'abarrotes', 'bebidas', 'bebidas_alcoholicas', 'botanas', 'carnes',
+        'cereales', 'condimentos', 'congelados', 'conservas', 'cuidado_bebe',
+        'cuidado_personal', 'deportes', 'dulces', 'electronica', 'enlatados',
+        'especias', 'farmacia', 'ferreteria', 'frutas', 'granos', 'harinas',
+        'hogar', 'huevos', 'jardin', 'juguetes', 'lacteos', 'libros',
+        'limpieza', 'mascotas', 'panaderia', 'pastas', 'postres', 'quesos',
+        'ropa', 'sopas', 'tabaco', 'utensilios', 'verduras'
+    ];
+    
+    selectCategoria.innerHTML = '<option value="">Seleccionar categoría...</option>';
+    
+    categorias.sort().forEach(categoria => {
+        const option = document.createElement('option');
+        option.value = categoria;
+        option.textContent = this.formatearNombreCategoria(categoria);
+        selectCategoria.appendChild(option);
+    });
+}
+
+// Método para formatear nombre de categoría (igual que en categorias.js)
+formatearNombreCategoria(categoria) {
+    const nombres = {
+        'abarrotes': '🛒 Abarrotes',
+        'bebidas': '🥤 Bebidas',
+        'bebidas_alcoholicas': '🍺 Bebidas Alcohólicas',
+        'botanas': '🍿 Botanas',
+        'carnes': '🥩 Carnes',
+        'cereales': '🌾 Cereales',
+        'condimentos': '🧂 Condimentos',
+        'congelados': '🧊 Congelados',
+        'conservas': '🥫 Conservas',
+        'cuidado_bebe': '👶 Cuidado del Bebé',
+        'cuidado_personal': '🧴 Cuidado Personal',
+        'deportes': '⚽ Deportes',
+        'dulces': '🍬 Dulces',
+        'electronica': '🔌 Electrodomésticos',
+        'enlatados': '🥫 Enlatados',
+        'especias': '🌶️ Especias',
+        'farmacia': '💊 Farmacia',
+        'ferreteria': '🛠️ Ferretería',
+        'frutas': '🍎 Frutas',
+        'granos': '🫘 Granos',
+        'harinas': '🌾 Harinas',
+        'hogar': '🏠 Hogar',
+        'huevos': '🥚 Huevos',
+        'jardin': '🌻 Jardín',
+        'juguetes': '🧸 Juguetes',
+        'lacteos': '🥛 Lácteos',
+        'libros': '📚 Libros',
+        'limpieza': '🧼 Limpieza',
+        'mascotas': '🐾 Mascotas',
+        'panaderia': '🥖 Panadería',
+        'pastas': '🍝 Pastas',
+        'postres': '🍰 Postres',
+        'quesos': '🧀 Quesos',  // <-- Nueva categoría
+        'ropa': '👕 Ropa',
+        'sopas': '🍜 Sopas',
+        'tabaco': '🚬 Tabaco',
+        'utensilios': '🍽️ Utensilios',
+        'verduras': '🌾 Verduras'
+    };
+    
+    return nombres[categoria] || `📁 ${categoria.charAt(0).toUpperCase() + categoria.slice(1)}`;
+}
+
+async editarProducto(productoId) {
     try {
         const producto = this.productos.find(p => p.id === productoId);
         if (!producto) {
@@ -837,6 +958,9 @@ async cargarProductos() {
         }
 
         this.currentProductoId = productoId;
+        
+        // Cargar categorías en el select antes de llenar el formulario
+        await this.cargarCategoriasEnSelect();
         
         // Datos básicos
         document.getElementById('productoId').value = producto.id;
@@ -848,7 +972,7 @@ async cargarProductos() {
         document.getElementById('productoDescripcion').value = producto.descripcion || '';
         document.getElementById('productoDestacado').checked = producto.destacado || false;
         
-        // NUEVOS CAMPOS
+        // Nuevos campos
         document.getElementById('productoCodigoBarras').value = producto.codigoBarras || '';
         document.getElementById('productoProveedor').value = producto.proveedor || '';
         document.getElementById('productoMarca').value = producto.marca || '';
@@ -860,7 +984,6 @@ async cargarProductos() {
         // Formatear fecha para input date (YYYY-MM-DD)
         if (producto.fechaVencimiento) {
             let fechaVencimiento = producto.fechaVencimiento;
-            // Si es objeto Firestore Timestamp
             if (fechaVencimiento && fechaVencimiento.toDate) {
                 fechaVencimiento = fechaVencimiento.toDate().toISOString().split('T')[0];
             }
@@ -993,11 +1116,14 @@ async cargarProductos() {
     document.getElementById('productoId').value = '';
     document.getElementById('modalProductoTitulo').textContent = 'Agregar Producto';
     
-    // Resetear valores por defecto de los nuevos campos
+    // Resetear valores por defecto
     document.getElementById('productoUnidadMedida').value = 'PZ';
     document.getElementById('productoStock').value = 0;
     document.getElementById('productoPuntoReorden').value = 0;
     document.getElementById('productoDestacado').checked = false;
+    
+    // Recargar categorías en el select para nuevo producto
+    this.cargarCategoriasEnSelect();
 }
 
     // ==================== ACTUALIZACIÓN DE PEDIDOS Y STOCK ====================

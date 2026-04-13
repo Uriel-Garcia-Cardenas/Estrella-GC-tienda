@@ -401,6 +401,8 @@ class ManejadorCategorias {
       'limpieza': '🧼 Limpieza',
       'abarrotes': '🛒 Abarrotes',
       'lacteos': '🥛 Lácteos',
+      'quesos': '🧀 Quesos',
+      'galletas': '🍪 Galletas',
       'verduras': '🌾 Verduras',
       'frutas': '🍎 Frutas',
       'panaderia': '🥖 Panadería',

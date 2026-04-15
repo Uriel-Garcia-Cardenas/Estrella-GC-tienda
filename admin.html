@@ -65,69 +65,88 @@
         </div>
     </div>
     
-    <div class="tab-pane fade" id="productos" role="tabpanel">
-        <h3>Gestión de Productos</h3>
-        
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <div class="d-flex align-items-center gap-3">
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalProducto">
-                        <i class="fas fa-plus me-1"></i> Agregar Producto
-                    </button>
-                    
-                    <select id="filtroCategoria" class="form-select w-auto">
-                        <option value="todas">Todas las categorías</option>
-                    </select>
-                </div>
-            </div>
-            <div class="col-md-6 text-end">
-                <small class="text-muted" id="infoFiltroProductos">
-                    Cargando información...
-                </small>
+     <div class="tab-pane fade" id="productos" role="tabpanel">
+    <h3>Gestión de Productos</h3>
+    
+    <!-- FILA 1: Botón agregar + filtro categoría + filtro marca -->
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalProducto">
+                    <i class="fas fa-plus me-1"></i> Agregar Producto
+                </button>
             </div>
         </div>
-        
-        <!-- Barra de búsqueda -->
-        <div class="row mb-3">
-            <div class="col-12">
-                <div class="input-group" style="max-width: 350px;">
-                    <input type="text" id="adminSearchInput" class="form-control" placeholder="Buscar producto por nombre...">
-                    <button class="btn btn-outline-secondary" id="adminSearchBtn" type="button">
-                        <i class="fas fa-search"></i>
-                    </button>
-                    <button class="btn btn-outline-danger" id="limpiarBusqueda" type="button" style="display: none;">
-                        <i class="fas fa-times"></i> Limpiar
-                    </button>
-                </div>
-            </div>
+        <div class="col-md-4">
+            <label class="form-label fw-semibold small mb-1">
+                <i class="fas fa-folder me-1"></i>Categoría
+            </label>
+            <select id="filtroCategoria" class="form-select form-select-sm">
+                <option value="todas">📦 Todas las categorías</option>
+            </select>
         </div>
-
-        
-        <!-- INICIO: Barra de búsqueda por código de barras (AGREGAR AQUÍ) -->
-        <div class="row mb-3">
-            <div class="col-12">
-                <div class="input-group" style="max-width: 400px;">
-                    <span class="input-group-text bg-primary text-white"><i class="fas fa-barcode"></i></span>
-                    <input type="text" id="adminBarcodeInput" class="form-control" placeholder="Escanea o escribe código de barras...">
-                    <button class="btn btn-primary" id="adminBarcodeBtn" type="button">
-                        <i class="fas fa-search"></i> Buscar
-                    </button>
-                    <button class="btn btn-outline-secondary" id="limpiarBarcodeBtn" type="button" style="display: none;">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <small class="text-muted mt-1 d-block">✅ Escanea con lector USB o escribe manualmente y presiona Enter</small>
-            </div>
+        <div class="col-md-4">
+            <label class="form-label fw-semibold small mb-1">
+                <i class="fas fa-tag me-1"></i>Marca
+            </label>
+            <select id="filtroMarca" class="form-select form-select-sm">
+                <option value="todas">🏷️ Todas las marcas</option>
+                <!-- Las marcas se cargarán dinámicamente desde Firebase -->
+            </select>
         </div>
-        <!-- FIN: Barra de búsqueda por código de barras -->
-
-        
-        <div class="row" id="listaProductos">
-            <div class="col-12">
-                <div class="alert alert-info">Cargando productos...</div>
+    </div>
+    
+    <!-- FILA 2: Información de filtros activos y botón limpiar -->
+    <div class="row mb-3">
+        <div class="col-md-8">
+            <small class="text-muted" id="infoFiltroProductos">
+                Cargando información...
+            </small>
+        </div>
+        <div class="col-md-4 text-end">
+            <button id="limpiarTodosFiltros" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-eraser me-1"></i> Limpiar todos los filtros
+            </button>
+        </div>
+    </div>
+    
+    <!-- FILA 3: Barra de búsqueda por nombre -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="input-group" style="max-width: 350px;">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" id="adminSearchInput" class="form-control" placeholder="Buscar producto por nombre...">
+                <button class="btn btn-outline-danger" id="limpiarBusqueda" type="button" style="display: none;">
+                    <i class="fas fa-times"></i> Limpiar
+                </button>
             </div>
         </div>
     </div>
+
+    <!-- FILA 4: Barra de búsqueda por código de barras -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="input-group" style="max-width: 400px;">
+                <span class="input-group-text bg-primary text-white"><i class="fas fa-barcode"></i></span>
+                <input type="text" id="adminBarcodeInput" class="form-control" placeholder="Escanea o escribe código de barras...">
+                <button class="btn btn-primary" id="adminBarcodeBtn" type="button">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+                <button class="btn btn-outline-secondary" id="limpiarBarcodeBtn" type="button" style="display: none;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <small class="text-muted mt-1 d-block">✅ Escanea con lector USB o escribe manualmente y presiona Enter</small>
+        </div>
+    </div>
+
+    <!-- Productos -->
+    <div class="row" id="listaProductos">
+        <div class="col-12">
+            <div class="alert alert-info">Cargando productos...</div>
+        </div>
+    </div>
+</div>
 </div>
   </div>
 
@@ -209,37 +228,38 @@
               <div class="col-md-6 mb-3">
                 <label class="form-label">Categoría *</label>
                 <select class="form-control" id="productoCategoria" required>
-                  <option value="">Selecciona una categoría</option>
-                  <option value="abarrotes">🛒 Abarrotes</option>
-                  <option value="lacteos">🥛 Lácteos</option>
-                  <option value="bebidas">🥤 Bebidas</option>
-                  <option value="condimentos">🧂 Condimentos</option>
-                  <option value="botanas">🍿 Botanas</option>
-                  <option value="utensilios">🍽️ Utensilios</option>
-                  <option value="bebidas_alcoholicas">🍺 Bebidas Alcohólicas</option>
-                  <option value="huevos">🥚 Huevos</option>
-                  <option value="cuidado_personal">🧴 Cuidado Personal</option>
-                  <option value="cuidado_bebe">👶 Cuidado del Bebé</option>
-                  <option value="limpieza">🧼 Limpieza</option>
-                  <option value="frutas_verduras">🍎 Frutas & Verduras</option>
-                  <option value="panaderia">🥖 Panadería</option>
-                  <option value="carnes">🥩 Carnes</option>
-                  <option value="congelados">🧊 Congelados</option>
-                  <option value="enlatados">🥫 Enlatados</option>
-                  <option value="cereales">🌾 Cereales</option>
-                  <option value="dulces">🍬 Dulces</option>
-                  <option value="mascotas">🐾 Mascotas</option>
-                  <option value="electrodomesticos">🔌 Electrodomésticos</option>
-                  <option value="ropa">👕 Ropa</option>
-                  <option value="juguetes">🧸 Juguetes</option>
-                  <option value="deportes">⚽ Deportes</option>
-                  <option value="libros">📚 Libros</option>
-                  <option value="jardin">🌻 Jardín</option>
-                  <option value="ferreteria">🛠️ Ferretería</option>
-                  <option value="farmacia">💊 Farmacia</option>
-                  <option value="automotriz">🚗 Automotriz</option>
-                  <!-- ... otras categorías ... -->
-                </select>
+    <option value="">Selecciona una categoría</option>
+    <option value="abarrotes">🛒 Abarrotes</option>
+    <option value="lacteos">🥛 Lácteos</option>
+    <option value="bebidas">🥤 Bebidas</option>
+    <option value="cafe">☕ Café</option>  <!-- NUEVO -->
+    <option value="energizantes">⚡ Energizantes</option>  <!-- NUEVO -->
+    <option value="condimentos">🧂 Condimentos</option>
+    <option value="botanas">🍿 Botanas</option>
+    <option value="utensilios">🍽️ Utensilios</option>
+    <option value="bebidas_alcoholicas">🍺 Bebidas Alcohólicas</option>
+    <option value="huevos">🥚 Huevos</option>
+    <option value="cuidado_personal">🧴 Cuidado Personal</option>
+    <option value="cuidado_bebe">👶 Cuidado del Bebé</option>
+    <option value="limpieza">🧼 Limpieza</option>
+    <option value="frutas_verduras">🍎 Frutas & Verduras</option>
+    <option value="panaderia">🥖 Panadería</option>
+    <option value="carnes">🥩 Carnes</option>
+    <option value="congelados">🧊 Congelados</option>
+    <option value="enlatados">🥫 Enlatados</option>
+    <option value="cereales">🌾 Cereales</option>
+    <option value="dulces">🍬 Dulces</option>
+    <option value="mascotas">🐾 Mascotas</option>
+    <option value="electrodomesticos">🔌 Electrodomésticos</option>
+    <option value="ropa">👕 Ropa</option>
+    <option value="juguetes">🧸 Juguetes</option>
+    <option value="deportes">⚽ Deportes</option>
+    <option value="libros">📚 Libros</option>
+    <option value="jardin">🌻 Jardín</option>
+    <option value="ferreteria">🛠️ Ferretería</option>
+    <option value="farmacia">💊 Farmacia</option>
+    <option value="automotriz">🚗 Automotriz</option>
+</select>
               </div>
               
               <div class="col-md-6 mb-3">

@@ -2,20 +2,23 @@
 
 class AdminManager {
     constructor() {
-        this.pedidos = [];
-        this.productos = [];
-        this.productosFiltrados = [];
-        this.filtroEstado = 'todos';
-        this.filtroCategoria = 'todas';
-        this.categorias = [];
-        this.isLoading = false;
-        this.currentProductoId = null;
-        this.terminoBusqueda = '';
-        this.productosOriginales = [];
-        this.categoriaChangeHandler = null;
-        this.pedidosSeleccionados = new Set();  // ← IMPORTANTE: para seleccionar pedidos
-        this.init();
-    }
+    this.pedidos = [];
+    this.productos = [];
+    this.productosFiltrados = [];
+    this.filtroEstado = 'todos';
+    this.filtroCategoria = 'todas';
+    this.filtroMarca = 'todas';  // <-- NUEVO: filtro por marca
+    this.categorias = [];
+    this.marcas = [];  // <-- NUEVO: array de marcas
+    this.isLoading = false;
+    this.currentProductoId = null;
+    this.terminoBusqueda = '';
+    this.productosOriginales = [];
+    this.categoriaChangeHandler = null;
+    this.marcaChangeHandler = null;  // <-- NUEVO: handler para marcas
+    this.pedidosSeleccionados = new Set();
+    this.init();
+}
 
     async init() {
         try {
@@ -28,25 +31,31 @@ class AdminManager {
     }
 
     // ==================== MÉTODOS DE BÚSQUEDA Y FILTRADO ====================
-
     filtrarProductos() {
-        let productosFiltrados = [...this.productosOriginales];
-        
-        if (this.filtroCategoria !== 'todas') {
-            productosFiltrados = productosFiltrados.filter(p => p.categoria === this.filtroCategoria);
-        }
-        
-        if (this.terminoBusqueda.trim() !== '') {
-            const termino = this.terminoBusqueda.toLowerCase().trim();
-            productosFiltrados = productosFiltrados.filter(p => 
-                p.nombre.toLowerCase().includes(termino)
-            );
-        }
-        
-        this.productos = productosFiltrados;
-        this.renderizarProductos();
-        this.mostrarInfoFiltro();
+    let productosFiltrados = [...this.productosOriginales];
+    
+    // Filtrar por categoría
+    if (this.filtroCategoria !== 'todas') {
+        productosFiltrados = productosFiltrados.filter(p => p.categoria === this.filtroCategoria);
     }
+    
+    // NUEVO: Filtrar por marca
+    if (this.filtroMarca !== 'todas') {
+        productosFiltrados = productosFiltrados.filter(p => p.marca === this.filtroMarca);
+    }
+    
+    // Filtrar por búsqueda
+    if (this.terminoBusqueda.trim() !== '') {
+        const termino = this.terminoBusqueda.toLowerCase().trim();
+        productosFiltrados = productosFiltrados.filter(p => 
+            p.nombre.toLowerCase().includes(termino)
+        );
+    }
+    
+    this.productos = productosFiltrados;
+    this.renderizarProductos();
+    this.mostrarInfoFiltro();
+}
 
     buscarProductos() {
         const searchInput = document.getElementById('adminSearchInput');
@@ -126,24 +135,78 @@ class AdminManager {
     }
 
     mostrarInfoFiltro() {
-        const infoFiltro = document.getElementById('infoFiltroProductos');
-        if (!infoFiltro) return;
+    const infoFiltro = document.getElementById('infoFiltroProductos');
+    if (!infoFiltro) return;
 
-        const totalProductos = this.productos.length;
-        const totalOriginales = this.productosOriginales.length;
-        
-        let infoText = `Mostrando ${totalProductos} de ${totalOriginales} productos`;
-        
-        if (this.filtroCategoria !== 'todas') {
-            infoText += ` en categoría <strong>${this.formatearCategoria(this.filtroCategoria)}</strong>`;
-        }
-        
-        if (this.terminoBusqueda) {
-            infoText += ` que coinciden con <strong>"${this.escapeHtml(this.terminoBusqueda)}"</strong>`;
-        }
-        
-        infoFiltro.innerHTML = infoText;
+    const totalProductos = this.productos.length;
+    const totalOriginales = this.productosOriginales.length;
+    
+    let infoText = `Mostrando ${totalProductos} de ${totalOriginales} productos`;
+    
+    if (this.filtroCategoria !== 'todas') {
+        infoText += ` en categoría <strong>${this.formatearCategoria(this.filtroCategoria)}</strong>`;
     }
+    
+    // NUEVO: Mostrar filtro de marca
+    if (this.filtroMarca !== 'todas') {
+        infoText += ` de la marca <strong>${this.escapeHtml(this.filtroMarca)}</strong>`;
+    }
+    
+    if (this.terminoBusqueda) {
+        infoText += ` que coinciden con <strong>"${this.escapeHtml(this.terminoBusqueda)}"</strong>`;
+    }
+    
+    infoFiltro.innerHTML = infoText;
+}
+
+// NUEVO: Cargar marcas en el select de filtro
+async cargarMarcasEnFiltro() {
+    const filtroMarca = document.getElementById('filtroMarca');
+    if (!filtroMarca) return;
+    
+    try {
+        // Obtener marcas únicas de los productos
+        const marcasSet = new Set();
+        this.productosOriginales.forEach(producto => {
+            if (producto.marca && producto.marca.trim() !== '') {
+                marcasSet.add(producto.marca);
+            }
+        });
+        
+        this.marcas = Array.from(marcasSet).sort();
+        
+        // Limpiar y llenar el select
+        filtroMarca.innerHTML = '<option value="todas">🏷️ Todas las marcas</option>';
+        
+        this.marcas.forEach(marca => {
+            const option = document.createElement('option');
+            option.value = marca;
+            option.textContent = `🏷️ ${marca}`;
+            filtroMarca.appendChild(option);
+        });
+        
+        // Restaurar valor si existía
+        if (this.filtroMarca && this.marcas.includes(this.filtroMarca)) {
+            filtroMarca.value = this.filtroMarca;
+        } else {
+            filtroMarca.value = 'todas';
+            this.filtroMarca = 'todas';
+        }
+        
+        // Agregar event listener si no existe
+        if (this.marcaChangeHandler) {
+            filtroMarca.removeEventListener('change', this.marcaChangeHandler);
+        }
+        this.marcaChangeHandler = () => {
+            this.filtroMarca = filtroMarca.value;
+            this.filtrarProductos();
+        };
+        filtroMarca.addEventListener('change', this.marcaChangeHandler);
+        
+    } catch (error) {
+        console.error('Error cargando marcas:', error);
+    }
+}
 
     // ==================== SELECCIÓN Y ELIMINACIÓN DE PEDIDOS ====================
 
@@ -259,6 +322,13 @@ class AdminManager {
         const searchInput = document.getElementById('adminSearchInput');
         const searchBtn = document.getElementById('adminSearchBtn');
         const limpiarBtn = document.getElementById('limpiarBusqueda');
+        // En setupEventListeners(), agrega:
+const limpiarTodosFiltrosBtn = document.getElementById('limpiarTodosFiltros');
+if (limpiarTodosFiltrosBtn) {
+    limpiarTodosFiltrosBtn.addEventListener('click', () => {
+        this.limpiarTodosFiltros();
+    });
+}
         
         if (searchInput) {
             searchInput.addEventListener('input', () => this.buscarProductos());
@@ -486,6 +556,10 @@ async cargarProductos() {
         console.log('Cargando productos desde Firebase...');
         this.productosOriginales = await fb.obtenerProductos();
         console.log(`Productos cargados: ${this.productosOriginales.length}`);
+        
+        // NUEVO: Cargar marcas en el filtro
+        await this.cargarMarcasEnFiltro();
+        
         this.filtrarProductos();
     } catch (error) {
         console.error('Error cargando productos:', error);
@@ -523,21 +597,50 @@ async cargarProductos() {
     }
 
     async cargarProductosPorCategoria() {
-        if (this.isLoading) return;
-        
-        this.isLoading = true;
-        this.mostrarCargaProductos();
-        
-        try {
-            this.productosOriginales = await fb.obtenerProductos();
-            this.filtrarProductos();
-        } catch (error) {
-            console.error('Error cargando productos:', error);
-            this.mostrarErrorProductos('Error al cargar los productos');
-        } finally {
-            this.isLoading = false;
-        }
+    if (this.isLoading) return;
+    
+    this.isLoading = true;
+    this.mostrarCargaProductos();
+    
+    try {
+        this.productosOriginales = await fb.obtenerProductos();
+        await this.cargarMarcasEnFiltro();  // NUEVO: actualizar marcas
+        this.filtrarProductos();
+    } catch (error) {
+        console.error('Error cargando productos:', error);
+        this.mostrarErrorProductos('Error al cargar los productos');
+    } finally {
+        this.isLoading = false;
     }
+}
+
+// NUEVO: Limpiar todos los filtros
+limpiarTodosFiltros() {
+    // Limpiar búsqueda
+    const searchInput = document.getElementById('adminSearchInput');
+    if (searchInput) searchInput.value = '';
+    this.terminoBusqueda = '';
+    
+    // Limpiar filtro de categoría
+    const filtroCategoria = document.getElementById('filtroCategoria');
+    if (filtroCategoria) filtroCategoria.value = 'todas';
+    this.filtroCategoria = 'todas';
+    
+    // Limpiar filtro de marca
+    const filtroMarca = document.getElementById('filtroMarca');
+    if (filtroMarca) filtroMarca.value = 'todas';
+    this.filtroMarca = 'todas';
+    
+    // Limpiar búsqueda por código de barras
+    const barcodeInput = document.getElementById('adminBarcodeInput');
+    if (barcodeInput) barcodeInput.value = '';
+    
+    // Aplicar filtros
+    this.filtrarProductos();
+    this.actualizarBotonLimpiar();
+    
+    this.mostrarMensaje('Todos los filtros han sido limpiados', 'info');
+}
 
     // ==================== FILTRO DE CATEGORÍAS ====================
 
@@ -840,9 +943,9 @@ async cargarCategoriasEnSelect() {
         
         // Categorías predefinidas por si Firebase no tiene todas
         const categoriasPredefinidas = [
-            'abarrotes', 'bebidas', 'bebidas_alcoholicas', 'botanas', 'carnes',
+            'abarrotes', 'bebidas', 'bebidas_alcoholicas', 'botanas', 'carnes', 'cafe',
             'cereales', 'condimentos', 'congelados', 'conservas', 'cuidado_bebe',
-            'cuidado_personal', 'deportes', 'dulces', 'electronica', 'enlatados',
+            'cuidado_personal', 'deportes', 'dulces', 'electronica', 'enlatados', 'energizantes',
             'especias', 'farmacia', 'ferreteria', 'frutas', 'galletas', 'granos', 'harinas',
             'hogar', 'huevos', 'jardin', 'juguetes', 'lacteos', 'libros',
             'limpieza', 'mascotas', 'panaderia', 'pastas', 'postres', 'quesos', // <- Quesos agregado
@@ -884,9 +987,9 @@ cargarCategoriasPredefinidasEnSelect() {
     if (!selectCategoria) return;
     
     const categorias = [
-        'abarrotes', 'bebidas', 'bebidas_alcoholicas', 'botanas', 'carnes',
+        'abarrotes', 'bebidas', 'bebidas_alcoholicas', 'botanas', 'carnes', 'cafe',
         'cereales', 'condimentos', 'congelados', 'conservas', 'cuidado_bebe',
-        'cuidado_personal', 'deportes', 'dulces', 'electronica', 'enlatados',
+        'cuidado_personal', 'deportes', 'dulces', 'electronica', 'enlatados', 'energizantes',
         'especias', 'farmacia', 'ferreteria', 'frutas', 'granos', 'harinas',
         'hogar', 'huevos', 'jardin', 'juguetes', 'lacteos', 'libros',
         'limpieza', 'mascotas', 'panaderia', 'pastas', 'postres', 'quesos',
@@ -910,6 +1013,7 @@ formatearNombreCategoria(categoria) {
         'bebidas': '🥤 Bebidas',
         'bebidas_alcoholicas': '🍺 Bebidas Alcohólicas',
         'botanas': '🍿 Botanas',
+        'cafe': '☕ Café',
         'carnes': '🥩 Carnes',
         'cereales': '🌾 Cereales',
         'condimentos': '🧂 Condimentos',
@@ -921,6 +1025,7 @@ formatearNombreCategoria(categoria) {
         'dulces': '🍬 Dulces',
         'electronica': '🔌 Electrodomésticos',
         'enlatados': '🥫 Enlatados',
+        'energizantes': '⚡ Energizantes', 
         'especias': '🌶️ Especias',
         'farmacia': '💊 Farmacia',
         'ferreteria': '🛠️ Ferretería',

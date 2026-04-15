@@ -4,7 +4,7 @@ class TicketGenerator {
     constructor() {
         this.tiendaNombre = "ESTRELLA G&C";
         this.tiendaDireccion = "Tienda en línea";
-        this.tiendaTelefono = "5576872157";
+        this.tiendaTelefono = "5524289757";
         this.tiendaEmail = "estrellagc99@gmail.com";
     }
 

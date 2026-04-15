@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Función para enviar notificación por WhatsApp
   function enviarWhatsApp(pedido, pedidoId) {
-    const telefonoTienda = "5576872157";
+    const telefonoTienda = "5524289757";
     
     let mensaje = `*NUEVO PEDIDO - ESTRELLA G&C*%0A%0A`;
     mensaje += `*Pedido #:* ${pedidoId}%0A`;

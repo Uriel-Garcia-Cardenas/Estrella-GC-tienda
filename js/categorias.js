@@ -489,14 +489,14 @@ crearCardProducto(producto) {
   return `
     <div class="col">
       <div class="card h-100 tarjeta">
-        <img src="${producto.imagen ? 'img/' + producto.imagen : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbiBubyBkaXNwb25pYmxlPC90ZXh0Pjwvc3ZnPg=='}"
+        <img src="img/${producto.imagen || 'logo.png'}" class="card-img-top" alt="${producto.nombre}" 
           loading="lazy"
-          onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbiBubyBkaXNwb25pYmxlPC90ZXh0Pjwvc3ZnPg=='"
+          onerror="this.src='img/logo.png'">
         <div class="card-body">
           <h3 class="card-title h5">${producto.nombre}</h3>
           <p class="card-text">${producto.descripcion || 'Sin descripción'}</p>
           ${codigoBarras ? `<small class="text-muted font-monospace d-block mb-2">Código: ${codigoBarras}</small>` : ''}
-          <p class="price">$${precioPorUnidad.toFixed(2)} ${necesitaCantidadPersonalizada ? (unidadMedida === 'g' || unidadMedida === 'gramo' ? 'por 100g' : 'por kg') : ''}</p>
+           <p class="price">$${precioPorUnidad.toFixed(2)} ${necesitaCantidadPersonalizada ? (unidadMedida === 'g' || unidadMedida === 'gramo' ? 'por 100g' : 'por kg') : ''}</p>
           ${producto.stock < 5 ? '<span class="badge bg-warning">Poco stock</span>' : ''}
           ${producto.destacado ? '<span class="badge bg-success">Destacado</span>' : ''}
           ${controlCantidad}

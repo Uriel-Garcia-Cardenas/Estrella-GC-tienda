@@ -489,14 +489,14 @@ crearCardProducto(producto) {
   return `
     <div class="col">
       <div class="card h-100 tarjeta">
-        <img src="img/${producto.imagen || 'placeholder.jpg'}" class="card-img-top" alt="${producto.nombre}" 
+        <img src="img/${producto.imagen || 'logo.png'}" class="card-img-top" alt="${producto.nombre}" 
           loading="lazy"
           onerror="this.src='img/logo.png'">
         <div class="card-body">
           <h3 class="card-title h5">${producto.nombre}</h3>
           <p class="card-text">${producto.descripcion || 'Sin descripción'}</p>
           ${codigoBarras ? `<small class="text-muted font-monospace d-block mb-2">Código: ${codigoBarras}</small>` : ''}
-           <p class="price">$${precioPorUnidad.toFixed(2)} ${necesitaCantidadPersonalizada ? (unidadMedida === 'g' || unidadMedida === 'gramo' ? 'por 100g' : 'por kg') : ''}</p>
+          <p class="price">$${precioPorUnidad.toFixed(2)} ${necesitaCantidadPersonalizada ? (unidadMedida === 'g' || unidadMedida === 'gramo' ? 'por 100g' : 'por kg') : ''}</p>
           ${producto.stock < 5 ? '<span class="badge bg-warning">Poco stock</span>' : ''}
           ${producto.destacado ? '<span class="badge bg-success">Destacado</span>' : ''}
           ${controlCantidad}

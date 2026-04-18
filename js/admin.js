@@ -7,15 +7,15 @@ class AdminManager {
     this.productosFiltrados = [];
     this.filtroEstado = 'todos';
     this.filtroCategoria = 'todas';
-    this.filtroMarca = 'todas';  // <-- NUEVO: filtro por marca
+    this.filtroMarca = 'todas';  
     this.categorias = [];
-    this.marcas = [];  // <-- NUEVO: array de marcas
+    this.marcas = [];  
     this.isLoading = false;
     this.currentProductoId = null;
     this.terminoBusqueda = '';
     this.productosOriginales = [];
     this.categoriaChangeHandler = null;
-    this.marcaChangeHandler = null;  // <-- NUEVO: handler para marcas
+    this.marcaChangeHandler = null;  
     this.pedidosSeleccionados = new Set();
     this.init();
 }
@@ -497,7 +497,6 @@ if (limpiarTodosFiltrosBtn) {
         }
     }
 
-    // ==================== CARGA DE DATOS ====================
 
    // ==================== CARGA DE DATOS ====================
 
@@ -507,7 +506,7 @@ async cargarDatosIniciales() {
         await this.cargarPedidos();
         await this.cargarCategorias();
         await this.cargarProductos();
-        await this.cargarCategoriasEnSelect(); // <-- Agregar esta línea
+        await this.cargarCategoriasEnSelect(); 
         console.log('Datos cargados correctamente');
     } catch (error) {
         console.error('Error cargando datos iniciales:', error);
@@ -557,7 +556,7 @@ async cargarProductos() {
         this.productosOriginales = await fb.obtenerProductos();
         console.log(`Productos cargados: ${this.productosOriginales.length}`);
         
-        // NUEVO: Cargar marcas en el filtro
+        
         await this.cargarMarcasEnFiltro();
         
         this.filtrarProductos();
@@ -893,8 +892,8 @@ limpiarTodosFiltros() {
     col.innerHTML = `
         <div class="card h-100 tarjeta">
             <div class="tarjeta-img-container">
-                <img src="img/${producto.imagen}" class="card-img-top" alt="${producto.nombre}" 
-                     onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbiBubyBkaXNwb25pYmxlPC90ZXh0Pjwvc3ZnPg==">
+                <img src="/img/${producto.imagen}" class="card-img-top" alt="${producto.nombre}">
+                onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbiBubyBkaXNwb25pYmxlPC90ZXh0Pjwvc3ZnPg==">
             </div>
             <div class="card-body d-flex flex-column">
                 <h5 class="card-title">${this.escapeHtml(producto.nombre)}</h5>
@@ -948,7 +947,7 @@ async cargarCategoriasEnSelect() {
             'cuidado_personal', 'deportes', 'dulces', 'electronica', 'enlatados', 'energizantes',
             'especias', 'farmacia', 'ferreteria', 'frutas', 'galletas', 'granos', 'harinas',
             'hogar', 'huevos', 'jardin', 'juguetes', 'lacteos', 'libros',
-            'limpieza', 'mascotas', 'panaderia', 'pastas', 'postres', 'quesos', // <- Quesos agregado
+            'limpieza', 'mascotas', 'panaderia', 'pastas', 'postres', 'quesos',
             'ropa', 'sopas', 'tabaco', 'utensilios', 'verduras'
         ];
         
@@ -1043,7 +1042,7 @@ formatearNombreCategoria(categoria) {
         'panaderia': '🥖 Panadería',
         'pastas': '🍝 Pastas',
         'postres': '🍰 Postres',
-        'quesos': '🧀 Quesos',  // <-- Nueva categoría
+        'quesos': '🧀 Quesos', 
         'ropa': '👕 Ropa',
         'sopas': '🍜 Sopas',
         'tabaco': '🚬 Tabaco',
@@ -1063,7 +1062,7 @@ async editarProducto(productoId) {
         }
 
         this.currentProductoId = productoId;
-        
+
         // Cargar categorías en el select antes de llenar el formulario
         await this.cargarCategoriasEnSelect();
         
@@ -1144,8 +1143,6 @@ async editarProducto(productoId) {
         imagen: document.getElementById('productoImagen').value.trim(),
         descripcion: document.getElementById('productoDescripcion').value.trim(),
         destacado: document.getElementById('productoDestacado').checked,
-        
-        // NUEVOS CAMPOS
         codigoBarras: document.getElementById('productoCodigoBarras').value.trim(),
         proveedor: document.getElementById('productoProveedor').value.trim(),
         marca: document.getElementById('productoMarca').value.trim(),

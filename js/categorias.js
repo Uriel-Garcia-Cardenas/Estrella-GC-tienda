@@ -446,13 +446,16 @@ const nombres = {
 
   // Crear card de producto (reutilizable)
   // Crear card de producto (reutilizable)
-// Crear card de producto (reutilizable)
 crearCardProducto(producto) {
+  //const categoriasCantidadPersonalizada = ['verduras', 'huevos', 'frutas', 'carnes'];
+  //const necesitaCantidadPersonalizada = categoriasCantidadPersonalizada.includes(producto.categoria);
+  //const precioPorUnidad = producto.precio;
   const unidadMedida = (producto.unidadMedida || '').toLowerCase();
   const unidadesPersonalizadas = ['kg', 'kilogramo', 'g', 'gramo'];
   const necesitaCantidadPersonalizada = unidadesPersonalizadas.includes(unidadMedida);
   const precioPorUnidad = producto.precio;
   
+  // Obtener código de barras (puede venir como 'codigoBarras' o 'codigo')
   const codigoBarras = producto.codigoBarras || producto.codigo || '';
 
   let controlCantidad = '';
@@ -462,7 +465,7 @@ crearCardProducto(producto) {
         <label class="form-label small">Cantidad (kg):</label>
         <div class="input-group input-group-sm">
           <button class="btn btn-outline-secondary btn-decrementar" type="button">-</button>
-          <input type="number" class="form-control text-center cantidad-input" data-id="${producto.id}" value="1" step="0.1" min="0.1" data-unidad="${unidadMedida}">
+          <input type="number" class="form-control text-center cantidad-input" data-id="${producto.id}" value="1" step="0.1" min="0.1"data-unidad="${unidadMedida}">
           <button class="btn btn-outline-secondary btn-incrementar" type="button">+</button>
         </div>
         <div class="precio-calculado mt-2">
@@ -486,10 +489,9 @@ crearCardProducto(producto) {
   return `
     <div class="col">
       <div class="card h-100 tarjeta">
-        <!-- 🔧 CORREGIDO: Agregado el slash / al inicio -->
-        <img src="/img/${producto.imagen || 'placeholder.jpg'}" class="card-img-top" alt="${producto.nombre}" 
+        <img src="img/${producto.imagen || 'placeholder.jpg'}" class="card-img-top" alt="${producto.nombre}" 
           loading="lazy"
-          onerror="this.src='/img/placeholder.jpg'">
+          onerror="this.src='img/placeholder.jpg'">
         <div class="card-body">
           <h3 class="card-title h5">${producto.nombre}</h3>
           <p class="card-text">${producto.descripcion || 'Sin descripción'}</p>

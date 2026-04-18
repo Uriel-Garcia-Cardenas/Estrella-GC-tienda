@@ -40,17 +40,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const urlWhatsApp = `https://wa.me/${telefonoTienda}?text=${mensaje}`;
     window.open(urlWhatsApp, '_blank');
   }
-
-  // Función para obtener la ruta correcta de las imágenes
-function getImagenUrl(nombreImagen) {
-    if (!nombreImagen) return '';
-    // Si ya tiene /img/ al inicio, no la modifiques
-    if (nombreImagen.startsWith('/img/')) return nombreImagen;
-    // Si tiene img/ sin slash, agrégale el slash
-    if (nombreImagen.startsWith('img/')) return '/' + nombreImagen;
-    // Si es solo el nombre del archivo, construye la ruta completa
-    return '/img/' + nombreImagen;
-}
   
   // Configurar event listeners una sola vez
   function configurarEventListenersPermanentes() {

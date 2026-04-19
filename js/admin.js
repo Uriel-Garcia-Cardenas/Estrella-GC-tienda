@@ -103,7 +103,7 @@ class AdminManager {
             this.limpiarBusqueda();
             this.productos = [producto];
             this.renderizarProductos();
-            this.mostrarMensaje(`✅ ${producto.nombre} encontrado`, 'success');
+            this.mostrarMensaje(` ${producto.nombre} encontrado`, 'success');
             
             // Resaltar y hacer scroll
             setTimeout(() => {
@@ -118,7 +118,7 @@ class AdminManager {
             
             barcodeInput.value = '';
         } else {
-            this.mostrarMensaje(`❌ Código "${codigo}" no encontrado`, 'danger');
+            this.mostrarMensaje(` Código "${codigo}" no encontrado`, 'danger');
             if (confirm(`¿Crear nuevo producto con código "${codigo}"?`)) {
                 this.limpiarFormularioProducto();
                 document.getElementById('productoCodigoBarras').value = codigo;
@@ -275,9 +275,9 @@ async cargarMarcasEnFiltro() {
         await this.cargarPedidos();
         
         if (errores === 0) {
-            this.mostrarMensaje(`✅ ${eliminados} pedido(s) eliminados correctamente`, 'success');
+            this.mostrarMensaje(` ${eliminados} pedido(s) eliminados correctamente`, 'success');
         } else {
-            this.mostrarMensaje(`⚠️ ${eliminados} eliminados, ${errores} errores`, 'warning');
+            this.mostrarMensaje(` ${eliminados} eliminados, ${errores} errores`, 'warning');
         }
         
         this.actualizarBotonEliminarSeleccionados();
@@ -290,11 +290,11 @@ async cargarMarcasEnFiltro() {
 
         try {
             await this.eliminarPedidoDeFirebase(pedidoId);
-            this.mostrarMensaje('✅ Pedido eliminado correctamente', 'success');
+            this.mostrarMensaje(' Pedido eliminado correctamente', 'success');
             await this.cargarPedidos();
         } catch (error) {
             console.error('Error eliminando pedido:', error);
-            this.mostrarMensaje('❌ Error al eliminar el pedido', 'danger');
+            this.mostrarMensaje(' Error al eliminar el pedido', 'danger');
         }
     }
 
@@ -1186,12 +1186,12 @@ async editarProducto(productoId) {
     try {
         if (productoId) {
             await fb.actualizarProducto(productoId, productoData);
-            this.mostrarMensaje('✅ Producto actualizado correctamente', 'success');
+            this.mostrarMensaje(' Producto actualizado correctamente', 'success');
         } else {
             // Para nuevo producto, agregar fechaCreacion
             productoData.fechaCreacion = new Date();
             await fb.agregarProducto(productoData);
-            this.mostrarMensaje('✅ Producto agregado correctamente', 'success');
+            this.mostrarMensaje(' Producto agregado correctamente', 'success');
         }
 
         await Promise.all([
@@ -1206,7 +1206,7 @@ async editarProducto(productoId) {
 
     } catch (error) {
         console.error('Error guardando producto:', error);
-        this.mostrarMensaje(`❌ Error al guardar el producto: ${error.message}`, 'danger');
+        this.mostrarMensaje(` Error al guardar el producto: ${error.message}`, 'danger');
     } finally {
         guardarBtn.innerHTML = originalText;
         guardarBtn.disabled = false;

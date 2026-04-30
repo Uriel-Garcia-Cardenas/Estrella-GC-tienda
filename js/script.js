@@ -354,32 +354,38 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 3000);
   }
 
-  async function cargarProductos() {
+ async function cargarProductos() {
     try {
-      const productos = await fb.obtenerProductos();
-      
-      if (typeof manejadorCategorias !== 'undefined' && manejadorCategorias) {
-        manejadorCategorias.extraerCategorias(productos);
-        manejadorCategorias.renderizarCategorias();
-      }
-      
-      agregarEventListenersProductos();
-      
+        const productos = await fb.obtenerProductos();
+        
+        if (typeof manejadorCategorias !== 'undefined' && manejadorCategorias) {
+            manejadorCategorias.extraerCategorias(productos);
+            manejadorCategorias.renderizarCategorias();
+            
+            // 🆕 FORZAR MOSTRAR SOLO DESTACADOS AL INICIO
+            const productosDestacados = productos.filter(p => p.destacado === true);
+            const contenedor = document.getElementById('productosPorCategoria');
+            if (contenedor && productosDestacados.length > 0) {
+                manejadorCategorias.renderizarDestacadosPorCategorias(contenedor, productosDestacados);
+            } else if (contenedor) {
+                contenedor.innerHTML = `
+                    <div class="col-12 text-center">
+                        <div class="alert alert-info">
+                            <h4>✨ Próximamente</h4>
+                            <p>Estamos preparando productos destacados para ti</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        agregarEventListenersProductos();
+        
     } catch (error) {
-      console.error("Error cargando productos:", error);
-      const productosContainer = document.getElementById('productosPorCategoria');
-      if (productosContainer) {
-        productosContainer.innerHTML = `
-          <div class="col-12 text-center">
-            <div class="alert alert-warning">
-              <h4>Error cargando productos</h4>
-              <p>Por favor, verifica tu conexión a internet</p>
-            </div>
-          </div>
-        `;
-      }
+        console.error("Error cargando productos:", error);
+        // ... resto del código
     }
-  }
+}
   
   verCarrito.addEventListener('click', () => {
     renderizarCarrito();

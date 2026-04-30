@@ -254,8 +254,65 @@ class ManejadorCategorias {
     }
   }
 
+  // Nuevo método: muestra solo productos destacados, agrupados por categoría
+renderizarDestacadosPorCategorias(contenedor, productosDestacados) {
+    // Agrupar productos destacados por categoría
+    const productosPorCategoria = productosDestacados.reduce((grupos, producto) => {
+        const categoria = producto.categoria || 'sin-categoria';
+        if (!grupos[categoria]) grupos[categoria] = [];
+        grupos[categoria].push(producto);
+        return grupos;
+    }, {});
+
+    // Ordenar categorías alfabéticamente
+    const categoriasOrdenadas = Object.keys(productosPorCategoria).sort();
+
+    if (categoriasOrdenadas.length === 0) {
+        contenedor.innerHTML = `
+            <div class="col-12 text-center">
+                <div class="alert alert-info">
+                    <h4>✨ Productos destacados</h4>
+                    <p>Próximamente más productos destacados</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    contenedor.innerHTML = categoriasOrdenadas.map(categoria => {
+        const productos = productosPorCategoria[categoria];
+        
+        // Agrupar por marca dentro de cada categoría
+        const productosPorMarca = this.agruparPorMarca(productos);
+        const marcasOrdenadas = Array.from(productosPorMarca.keys()).sort();
+
+        return `
+            <div class="categoria-section mb-5">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="categoria-titulo">
+                        <i class="fas fa-star text-warning me-2"></i>
+                        ${this.formatearNombreCategoria(categoria)}
+                    </h3>
+                    <span class="badge bg-warning text-dark">Destacados</span>
+                </div>
+                
+                ${marcasOrdenadas.map(marca => `
+                    <div class="marca-subseccion mb-4">
+                        <h4 class="marca-titulo h5 text-secondary mb-3">
+                            <i class="fas fa-tag me-2"></i>${this.formatearNombreMarca(marca)}
+                        </h4>
+                        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+                            ${productosPorMarca.get(marca).map(producto => this.crearCardProducto(producto)).join('')}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }).join('');
+}
+
   // Renderizar productos organizados
-  renderizarProductos() {
+   renderizarProductos() {
     const contenedor = document.getElementById('productosPorCategoria');
     if (!contenedor) return;
 
@@ -271,30 +328,33 @@ class ManejadorCategorias {
       productosFiltrados = productosFiltrados.filter(p => p.marca === this.marcaActual);
     }
 
+    // ✨ NUEVO: Si es "todas" las categorías, solo mostrar destacados
+    if (this.categoriaActual === 'todas' && this.marcaActual === 'todas') {
+      productosFiltrados = productosFiltrados.filter(p => p.destacado === true);
+    }
+
     if (productosFiltrados.length === 0) {
       contenedor.innerHTML = `
         <div class="col-12 text-center">
           <div class="alert alert-warning">
-            <h4>No hay productos</h4>
-            <p>No se encontraron productos con los filtros seleccionados</p>
+            <h4>No hay productos destacados</h4>
+            <p>No se encontraron productos destacados en este momento</p>
           </div>
         </div>
       `;
       return;
     }
 
-    // Si estamos filtrando por marca O por categoría, mostrar lista simple agrupada por marca
+    // Si estamos filtrando por marca O por categoría...
     if (this.marcaActual !== 'todas') {
-      // Filtrando por marca específica: mostrar solo productos de esa marca (sin subgrupos)
       this.renderizarListaSimple(contenedor, productosFiltrados);
     } else if (this.categoriaActual !== 'todas') {
-      // Filtrando por categoría: mostrar productos agrupados por marca dentro de la categoría
       this.renderizarPorMarcas(contenedor, productosFiltrados);
     } else {
-      // Mostrar todos: categorías → marcas → productos
-      this.renderizarPorCategoriasYMarcas(contenedor);
+      // Mostrar SOLO productos destacados organizados por categorías
+      this.renderizarDestacadosPorCategorias(contenedor, productosFiltrados);
     }
-  }
+}
 
   // NUEVO: Renderizar productos agrupados por marcas (cuando se filtra por categoría)
   renderizarPorMarcas(contenedor, productos) {
@@ -387,7 +447,7 @@ class ManejadorCategorias {
 
   // Formatear nombre de categoría para mostrar
   formatearNombreCategoria(categoria) {
-    if (categoria === 'todas') return '📦 Todos los productos';
+     if (categoria === 'todas') return '✨ Destacados'; 
     
     // En categorias.js, dentro del método formatearNombreCategoria()
 const nombres = {

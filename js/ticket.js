@@ -262,14 +262,16 @@ generarContenidoPDF(pedido, pedidoId) {
 }
 
     // Texto para métodos de pago
-    getMetodoPagoTexto(metodo) {
-        const metodos = {
-            'tarjeta': 'Tarjeta de crédito/débito',
-            'transferencia': 'Transferencia bancaria',
-            'sucursal': 'Pago en sucursal'
-        };
-        return metodos[metodo] || metodo;
-    }
+    // Texto para métodos de pago
+getMetodoPagoTexto(metodo) {
+    const metodos = {
+        'tarjeta': '💳 Tarjeta de crédito/débito',
+        'transferencia': '🏦 Transferencia bancaria',
+        'sucursal': '🏪 Pago en sucursal',
+        'efectivo_repartidor': '💵 Pagar al repartidor (Efectivo)'
+    };
+    return metodos[metodo] || metodo;
+}
 
     // Imprimir ticket
     imprimirTicket(pedido, pedidoId) {

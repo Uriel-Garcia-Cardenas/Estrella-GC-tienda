@@ -376,6 +376,21 @@ if (limpiarTodosFiltrosBtn) {
                 const checkbox = e.target.closest('.seleccionar-pedido');
                 this.toggleSeleccionPedido(checkbox.dataset.pedidoId, checkbox.checked);
             }
+            // Dentro de document.addEventListener('click', ...)
+if (e.target.closest('.ver-ticket')) {
+    const btn = e.target.closest('.ver-ticket');
+    const pedidoId = btn.dataset.pedidoId;
+    // Obtener los datos del pedido desde el atributo data-pedido
+    const pedidoData = JSON.parse(btn.dataset.pedido.replace(/&apos;/g, "'"));
+    
+    // Verificar que ticketGenerator exista
+    if (typeof ticketGenerator !== 'undefined' && ticketGenerator) {
+        ticketGenerator.mostrarTicketModal(pedidoData, pedidoId);
+    } else {
+        console.error('TicketGenerator no está disponible');
+        this.mostrarMensaje('Error: Generador de tickets no disponible', 'danger');
+    }
+}
         });
 
         // Botón eliminar seleccionados
@@ -759,13 +774,18 @@ limpiarTodosFiltros() {
                             <option value="enviado" ${pedido.estado === 'enviado' ? 'selected' : ''}>Enviado</option>
                             <option value="entregado" ${pedido.estado === 'entregado' ? 'selected' : ''}>Entregado</option>
                         </select>
-                        <div class="btn-group-vertical w-100">
-                            <button class="btn btn-sm btn-outline-info ver-pagos" data-pedido-id="${pedido.id}">
-                                <i class="fas fa-money-bill me-1"></i>Ver Pagos
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger eliminar-pedido mt-1" data-pedido-id="${pedido.id}">
-                                <i class="fas fa-trash-alt me-1"></i>Eliminar Pedido
-                            </button>
+                        
+                            <div class="btn-group-vertical w-100">
+    <button class="btn btn-sm btn-outline-info ver-pagos" data-pedido-id="${pedido.id}">
+        <i class="fas fa-money-bill me-1"></i>Ver Pagos
+    </button>
+    <button class="btn btn-sm btn-outline-primary ver-ticket mt-1" data-pedido-id="${pedido.id}" data-pedido='${JSON.stringify(pedido).replace(/'/g, "&apos;")}'>
+        <i class="fas fa-receipt me-1"></i>Ver Ticket
+    </button>
+    <button class="btn btn-sm btn-outline-danger eliminar-pedido mt-1" data-pedido-id="${pedido.id}">
+        <i class="fas fa-trash-alt me-1"></i>Eliminar Pedido
+    </button>
+</div>
                         </div>
                     </div>
                 </div>

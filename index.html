@@ -167,20 +167,40 @@
                       </div>
                     </div>
                     <div class="col-md-6">
-                      <h6>Forma de pago</h6>
-                      <div class="form-check">
-                        <input class="form-check-input" type="radio" name="pago" id="pagoTarjeta" value="tarjeta" checked>
-                        <label class="form-check-label" for="pagoTarjeta">Tarjeta</label>
-                      </div>
-                      <div class="form-check">
-                        <input class="form-check-input" type="radio" name="pago" id="pagoSucursal" value="sucursal">
-                        <label class="form-check-label" for="pagoSucursal">Pago en sucursal</label>
-                      </div>
-                      <div class="form-check">
-                        <input class="form-check-input" type="radio" name="pago" id="pagoTransferencia" value="transferencia">
-                        <label class="form-check-label" for="pagoTransferencia">Transferencia</label>
-                      </div>
-                    </div>
+    <h6>Forma de pago</h6>
+    
+    <!-- PAGAR AL REPARTIDOR (NUEVO) -->
+    <div class="form-check mb-2">
+        <input class="form-check-input" type="radio" name="pago" id="pagoRepartidor" value="efectivo_repartidor">
+        <label class="form-check-label" for="pagoRepartidor">
+            💵 Pagar al repartidor (Efectivo)
+        </label>
+    </div>
+    
+    <!-- TARJETA (DESHABILITADA - PRÓXIMAMENTE) -->
+    <div class="form-check mb-2">
+        <input class="form-check-input" type="radio" name="pago" id="pagoTarjeta" value="tarjeta" disabled>
+        <label class="form-check-label text-muted" for="pagoTarjeta">
+            💳 Pago con tarjeta <span class="badge bg-secondary">Próximamente</span>
+        </label>
+    </div>
+    
+    <!-- PAGO EN SUCURSAL -->
+    <div class="form-check mb-2">
+        <input class="form-check-input" type="radio" name="pago" id="pagoSucursal" value="sucursal">
+        <label class="form-check-label" for="pagoSucursal">
+            🏪 Pago en sucursal
+        </label>
+    </div>
+    
+    <!-- TRANSFERENCIA -->
+    <div class="form-check mb-2">
+        <input class="form-check-input" type="radio" name="pago" id="pagoTransferencia" value="transferencia">
+        <label class="form-check-label" for="pagoTransferencia">
+            🏦 Transferencia bancaria
+        </label>
+    </div>
+</div>
                   </div>
                 </div>
               </div>

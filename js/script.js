@@ -25,7 +25,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     mensaje += `*Tipo de entrega:* ${pedido.metodoEntrega === 'domicilio' ? 'Entrega a domicilio' : 'Recolección en sucursal'}%0A`;
-    mensaje += `*Método de pago:* ${pedido.metodoPago}%0A%0A`;
+    let metodoPagoTexto = pedido.metodoPago;
+if (metodoPagoTexto === 'efectivo_repartidor') metodoPagoTexto = '💵 Pagar al repartidor (Efectivo)';
+if (metodoPagoTexto === 'transferencia') metodoPagoTexto = '🏦 Transferencia bancaria';
+if (metodoPagoTexto === 'sucursal') metodoPagoTexto = '🏪 Pago en sucursal';
+if (metodoPagoTexto === 'tarjeta') metodoPagoTexto = '💳 Tarjeta (Próximamente)';
+mensaje += `*Método de pago:* ${metodoPagoTexto}%0A%0A`;
     
     mensaje += `*PRODUCTOS:*%0A`;
     pedido.productos.forEach((producto, index) => {
@@ -43,24 +48,57 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Configurar event listeners una sola vez
   function configurarEventListenersPermanentes() {
+    // Referencias a los radios de pago
+    const repartidorRadio = document.getElementById('pagoRepartidor');
+    const tarjetaRadio = document.getElementById('pagoTarjeta');
+    const sucursalRadio = document.getElementById('pagoSucursal');
+    const transferenciaRadio = document.getElementById('pagoTransferencia');
+    
+    // Función para habilitar/deshabilitar "Pagar al repartidor" según el tipo de entrega
+    function actualizarPagoRepartidor() {
+        const entregaSeleccionada = document.querySelector('input[name="entrega"]:checked');
+        const esDomicilio = entregaSeleccionada && entregaSeleccionada.value === 'domicilio';
+        
+        if (repartidorRadio) {
+            if (esDomicilio) {
+                repartidorRadio.disabled = false;
+                repartidorRadio.parentElement.querySelector('label').classList.remove('text-muted');
+            } else {
+                repartidorRadio.disabled = true;
+                repartidorRadio.checked = false;
+                repartidorRadio.parentElement.querySelector('label').classList.add('text-muted');
+                // Si estaba seleccionado, seleccionar otro método por defecto
+                if (sucursalRadio) sucursalRadio.checked = true;
+            }
+        }
+        // Tarjeta siempre deshabilitada
+        if (tarjetaRadio) {
+            tarjetaRadio.disabled = true;
+        }
+    }
+    
     // Event listeners para métodos de pago
     document.querySelectorAll('input[name="pago"]').forEach(radio => {
-      radio.addEventListener('change', function() {
-        document.getElementById('datosTarjeta').style.display = 
-          this.value === 'tarjeta' ? 'block' : 'none';
-        document.getElementById('datosTransferencia').style.display = 
-          this.value === 'transferencia' ? 'block' : 'none';
-      });
+        radio.addEventListener('change', function() {
+            document.getElementById('datosTarjeta').style.display = 
+                this.value === 'tarjeta' ? 'block' : 'none';
+            document.getElementById('datosTransferencia').style.display = 
+                this.value === 'transferencia' ? 'block' : 'none';
+        });
     });
     
-    // Event listener para tipo de entrega
+    // Event listener para tipo de entrega (actualiza el estado de "Pagar al repartidor")
     document.querySelectorAll('input[name="entrega"]').forEach(radio => {
-      radio.addEventListener('change', function() {
-        document.getElementById('campoDireccion').style.display = 
-          this.value === 'domicilio' ? 'block' : 'none';
-      });
+        radio.addEventListener('change', function() {
+            document.getElementById('campoDireccion').style.display = 
+                this.value === 'domicilio' ? 'block' : 'none';
+            actualizarPagoRepartidor(); // Actualizar el estado del pago al repartidor
+        });
     });
-  }
+    
+    // Inicializar estado al cargar la página
+    actualizarPagoRepartidor();
+}
 
   // Actualizar carrito
   function actualizarCarrito() {
@@ -314,7 +352,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
       actualizarCarrito();
 
-  const unidadTexto = unidadMedida === 'g' || unidadMedida === 'gramo' ? 'g' : 'kg';
+  // Obtener la unidad de medida correctamente desde el producto
+const unidadDelProducto = esCantidadPersonalizada ? (btn.getAttribute('data-unidad-medida') || 'kg') : 'pz';
+const unidadTexto = (unidadDelProducto === 'g' || unidadDelProducto === 'gramo') ? 'g' : 
+                    (unidadDelProducto === 'kg' || unidadDelProducto === 'kilogramo') ? 'kg' : 'pz';
   const mensaje = esCantidadPersonalizada
     ? `${nombre} (${cantidad} ${unidadTexto}) agregado al carrito - $${precioFinal.toFixed(2)}`
     : `${nombre} x${cantidad} agregado al carrito`;
@@ -325,23 +366,16 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function mostrarNotificacion(mensaje, tipo = 'success') {
-    const toastAnterior = document.querySelector('.toast-container');
-    if (toastAnterior) {
-      toastAnterior.remove();
-    }
-    
-    const toastContainer = document.createElement('div');
+     const toastContainer = document.createElement('div');
     toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
     toastContainer.style.zIndex = '9999';
     toastContainer.innerHTML = `
-      <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="toast show" role="alert">
         <div class="toast-header bg-${tipo} text-white">
-          <strong class="me-auto">${tipo === 'success' ? 'Producto agregado' : 'Atención'}</strong>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+          <strong class="me-auto">${tipo === 'success' ? '✅ Producto agregado' : '⚠️ Atención'}</strong>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
         </div>
-        <div class="toast-body">
-          ${mensaje}
-        </div>
+        <div class="toast-body">${mensaje}</div>
       </div>
     `;
     
@@ -428,6 +462,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const metodoEntrega = entregaRadio.value;
     const direccion = document.getElementById('direccion').value.trim() || 'No especificada';
 
+    // ==================== VALIDACIÓN: PAGO AL REPARTIDOR SOLO CON DOMICILIO ====================
+    if (metodoPago === 'efectivo_repartidor' && metodoEntrega !== 'domicilio') {
+        mostrarNotificacion('El pago al repartidor solo está disponible para entregas a domicilio.', 'warning');
+        finalizarCompraBtn.disabled = false;
+        finalizarCompraBtn.innerHTML = 'Finalizar compra';
+        return;
+    }
+    // ===========================================================================================
+
     // Crear copia del carrito con todos los datos necesarios
     const productosParaPedido = carrito.map(item => ({
       id: item.id,
@@ -454,11 +497,11 @@ document.addEventListener('DOMContentLoaded', function() {
       fecha: new Date(),
       metodoPago: metodoPago,
       metodoEntrega: metodoEntrega,
-      estadoPago: "pendiente",
+      estadoPago: metodoPago === 'efectivo_repartidor' ? 'pendiente_entrega' : "pendiente",
       fechaCreacion: new Date()
     };
 
-    console.log('Pedido a guardar:', pedido); // Para depuración
+    console.log('Pedido a guardar:', pedido);
 
     try {
       finalizarCompraBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Procesando...';
@@ -467,8 +510,15 @@ document.addEventListener('DOMContentLoaded', function() {
       const pedidoId = await fb.guardarPedido(pedido);
       console.log('Pedido guardado con ID:', pedidoId);
       
-      if (metodoPago === 'tarjeta' || metodoPago === 'transferencia') {
+      if (metodoPago === 'tarjeta') {
+          mostrarNotificacion('⏳ El pago con tarjeta estará disponible próximamente.', 'warning');
+          finalizarCompraBtn.disabled = false;
+          finalizarCompraBtn.innerHTML = 'Finalizar compra';
+          return;
+      } else if (metodoPago === 'transferencia') {
         await procesarPagoMercadoPago(pedido, pedidoId);
+      } else if (metodoPago === 'efectivo_repartidor') {
+        await finalizarPedidoRepartidor(pedido, pedidoId);
       } else {
         await finalizarPedidoSucursal(pedido, pedidoId);
       }
@@ -480,7 +530,6 @@ document.addEventListener('DOMContentLoaded', function() {
       finalizarCompraBtn.disabled = false;
     }
   });
-
   async function procesarPagoMercadoPago(pedido, pedidoId) {
     try {
       const preferencia = await fb.crearPreferenciaMercadoPago({
@@ -530,6 +579,107 @@ document.addEventListener('DOMContentLoaded', function() {
     carrito = [];
     actualizarCarrito();
   }
+
+  // ==================== NUEVA FUNCIÓN: PAGO AL REPARTIDOR ====================
+async function finalizarPedidoRepartidor(pedido, pedidoId) {
+    const pagoData = {
+        pedidoId: pedidoId,
+        metodoPago: 'efectivo_repartidor',
+        monto: pedido.total,
+        estado: 'pendiente_entrega',
+        fechaCreacion: new Date(),
+        cliente: pedido.cliente
+    };
+
+    await db.collection("pagos").add(pagoData);
+    mostrarResumenCompraRepartidor(pedido, pedidoId);
+    enviarWhatsAppRepartidor(pedido, pedidoId);
+    
+    setTimeout(() => {
+        if (typeof ticketGenerator !== 'undefined' && ticketGenerator) {
+            ticketGenerator.mostrarTicketModal(pedido, pedidoId);
+        }
+    }, 1000);
+    
+    carrito = [];
+    actualizarCarrito();
+}
+
+function mostrarResumenCompraRepartidor(pedido, pedidoId) {
+    const totalConIVA = pedido.total * 1.16;
+    
+    const resumenHTML = `
+        <div class="alert alert-info">
+            <h5>✅ ¡Pedido confirmado!</h5>
+            <p>Gracias por tu compra, ${pedido.cliente.nombre}.</p>
+            <p>Número de pedido: <strong>${pedidoId}</strong></p>
+            <p>Total: <strong>$${totalConIVA.toFixed(2)}</strong> (incluye IVA)</p>
+            <p>Método de pago: <strong>💵 Pagar al repartidor (Efectivo)</strong></p>
+            <p>Tipo de entrega: ${pedido.metodoEntrega === 'domicilio' ? '🚚 Entrega a domicilio' : '🏪 Recolección en sucursal'}</p>
+            
+            <div class="alert alert-warning mt-3">
+                <strong>📌 Instrucciones de pago:</strong>
+                <ul class="mb-0 mt-2">
+                    <li>Prepara el monto exacto en efectivo</li>
+                    <li>El repartidor te entregará el pedido y cobrará el monto indicado</li>
+                    <li>Recibirás un ticket impreso como comprobante</li>
+                </ul>
+            </div>
+            
+            <div class="mt-3">
+                <button id="verTicketBtnRepartidor" class="btn btn-primary">
+                    <i class="fas fa-receipt me-1"></i> Ver Comprobante
+                </button>
+            </div>
+        </div>
+    `;
+    
+    const resumenContainer = document.getElementById('resumenCompra');
+    if (resumenContainer) {
+        resumenContainer.innerHTML = resumenHTML;
+    }
+    
+    const verTicketBtn = document.getElementById('verTicketBtnRepartidor');
+    if (verTicketBtn && typeof ticketGenerator !== 'undefined') {
+        verTicketBtn.addEventListener('click', () => {
+            ticketGenerator.mostrarTicketModal(pedido, pedidoId);
+        });
+    }
+    
+    setTimeout(() => {
+        limpiarFormularioYCerrar();
+    }, 15000);
+}
+
+function enviarWhatsAppRepartidor(pedido, pedidoId) {
+    const telefonoTienda = "5524289757";
+    
+    let mensaje = `*NUEVO PEDIDO - ESTRELLA G&C*%0A%0A`;
+    mensaje += `*Pedido #:* ${pedidoId}%0A`;
+    mensaje += `*Cliente:* ${pedido.cliente.nombre}%0A`;
+    mensaje += `*Teléfono:* ${pedido.cliente.telefono}%0A`;
+    
+    if (pedido.metodoEntrega === 'domicilio' && pedido.cliente.direccion) {
+        mensaje += `*Dirección:* ${pedido.cliente.direccion}%0A`;
+    }
+    
+    mensaje += `*Método de pago:* 💵 Pagar al repartidor (Efectivo)%0A`;
+    mensaje += `*Tipo de entrega:* ${pedido.metodoEntrega === 'domicilio' ? 'Entrega a domicilio' : 'Recolección en sucursal'}%0A%0A`;
+    
+    mensaje += `*PRODUCTOS:*%0A`;
+    pedido.productos.forEach((producto, index) => {
+        const cantidad = producto.cantidadPersonalizada ? producto.cantidadPersonalizadaValor : producto.cantidad;
+        const unidad = producto.unidad || (producto.cantidadPersonalizada ? 'kg' : 'pz');
+        mensaje += `${index + 1}. ${producto.nombre} - Cantidad: ${cantidad} ${unidad} - $${(producto.precio * cantidad).toFixed(2)}%0A`;
+    });
+    
+    mensaje += `%0A*TOTAL A COBRAR: $${pedido.total.toFixed(2)}*%0A%0A`;
+    mensaje += `*INSTRUCCIONES:* El cliente pagará en efectivo al momento de la entrega.%0A`;
+    mensaje += `*Fecha:* ${new Date().toLocaleString('es-MX')}`;
+    
+    const urlWhatsApp = `https://wa.me/${telefonoTienda}?text=${mensaje}`;
+    window.open(urlWhatsApp, '_blank');
+}
 
   function mostrarResumenCompra(pedido, pedidoId, metodoPago) {
     const totalConIVA = pedido.total * 1.16;

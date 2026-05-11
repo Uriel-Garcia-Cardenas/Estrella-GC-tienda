@@ -26,11 +26,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     mensaje += `*Tipo de entrega:* ${pedido.metodoEntrega === 'domicilio' ? 'Entrega a domicilio' : 'Recolección en sucursal'}%0A`;
     let metodoPagoTexto = pedido.metodoPago;
-if (metodoPagoTexto === 'efectivo_repartidor') metodoPagoTexto = '💵 Pagar al repartidor (Efectivo)';
-if (metodoPagoTexto === 'transferencia') metodoPagoTexto = '🏦 Transferencia bancaria';
-if (metodoPagoTexto === 'sucursal') metodoPagoTexto = '🏪 Pago en sucursal';
-if (metodoPagoTexto === 'tarjeta') metodoPagoTexto = '💳 Tarjeta (Próximamente)';
-mensaje += `*Método de pago:* ${metodoPagoTexto}%0A%0A`;
+    if (metodoPagoTexto === 'efectivo_repartidor') metodoPagoTexto = '💵 Pagar al repartidor (Efectivo)';
+    if (metodoPagoTexto === 'transferencia') metodoPagoTexto = '🏦 Transferencia bancaria';
+    if (metodoPagoTexto === 'sucursal') metodoPagoTexto = '🏪 Pago en sucursal';
+    if (metodoPagoTexto === 'tarjeta') metodoPagoTexto = '💳 Tarjeta (Próximamente)';
+    mensaje += `*Método de pago:* ${metodoPagoTexto}%0A%0A`;
     
     mensaje += `*PRODUCTOS:*%0A`;
     pedido.productos.forEach((producto, index) => {
@@ -67,11 +67,9 @@ mensaje += `*Método de pago:* ${metodoPagoTexto}%0A%0A`;
                 repartidorRadio.disabled = true;
                 repartidorRadio.checked = false;
                 repartidorRadio.parentElement.querySelector('label').classList.add('text-muted');
-                // Si estaba seleccionado, seleccionar otro método por defecto
                 if (sucursalRadio) sucursalRadio.checked = true;
             }
         }
-        // Tarjeta siempre deshabilitada
         if (tarjetaRadio) {
             tarjetaRadio.disabled = true;
         }
@@ -92,13 +90,12 @@ mensaje += `*Método de pago:* ${metodoPagoTexto}%0A%0A`;
         radio.addEventListener('change', function() {
             document.getElementById('campoDireccion').style.display = 
                 this.value === 'domicilio' ? 'block' : 'none';
-            actualizarPagoRepartidor(); // Actualizar el estado del pago al repartidor
+            actualizarPagoRepartidor();
         });
     });
     
-    // Inicializar estado al cargar la página
     actualizarPagoRepartidor();
-}
+  }
 
   // Actualizar carrito
   function actualizarCarrito() {
@@ -334,7 +331,7 @@ mensaje += `*Método de pago:* ${metodoPagoTexto}%0A%0A`;
           cantidadPersonalizada: true,
           precioBase: precioBase,
           cantidadPersonalizadaValor: cantidad,
-          unidad: unidadMedida === 'g' || unidadMedida === 'gramo' ? 'g' : 'kg',
+          unidad: 'kg',
           codigoBarras: codigoBarras
         });
       } else {
@@ -352,13 +349,12 @@ mensaje += `*Método de pago:* ${metodoPagoTexto}%0A%0A`;
 
       actualizarCarrito();
 
-  // Obtener la unidad de medida correctamente desde el producto
-const unidadDelProducto = esCantidadPersonalizada ? (btn.getAttribute('data-unidad-medida') || 'kg') : 'pz';
-const unidadTexto = (unidadDelProducto === 'g' || unidadDelProducto === 'gramo') ? 'g' : 
-                    (unidadDelProducto === 'kg' || unidadDelProducto === 'kilogramo') ? 'kg' : 'pz';
-  const mensaje = esCantidadPersonalizada
-    ? `${nombre} (${cantidad} ${unidadTexto}) agregado al carrito - $${precioFinal.toFixed(2)}`
-    : `${nombre} x${cantidad} agregado al carrito`;
+      const unidadDelProducto = esCantidadPersonalizada ? (btn.getAttribute('data-unidad-medida') || 'kg') : 'pz';
+      const unidadTexto = (unidadDelProducto === 'g' || unidadDelProducto === 'gramo') ? 'g' : 
+                          (unidadDelProducto === 'kg' || unidadDelProducto === 'kilogramo') ? 'kg' : 'pz';
+      const mensaje = esCantidadPersonalizada
+        ? `${nombre} (${cantidad} ${unidadTexto}) agregado al carrito - $${precioFinal.toFixed(2)}`
+        : `${nombre} x${cantidad} agregado al carrito`;
       mostrarNotificacion(mensaje, 'success');
     });
 
@@ -366,7 +362,7 @@ const unidadTexto = (unidadDelProducto === 'g' || unidadDelProducto === 'gramo')
   }
 
   function mostrarNotificacion(mensaje, tipo = 'success') {
-     const toastContainer = document.createElement('div');
+    const toastContainer = document.createElement('div');
     toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
     toastContainer.style.zIndex = '9999';
     toastContainer.innerHTML = `
@@ -388,7 +384,7 @@ const unidadTexto = (unidadDelProducto === 'g' || unidadDelProducto === 'gramo')
     }, 3000);
   }
 
- async function cargarProductos() {
+  async function cargarProductos() {
     try {
         const productos = await fb.obtenerProductos();
         
@@ -396,7 +392,6 @@ const unidadTexto = (unidadDelProducto === 'g' || unidadDelProducto === 'gramo')
             manejadorCategorias.extraerCategorias(productos);
             manejadorCategorias.renderizarCategorias();
             
-            // 🆕 FORZAR MOSTRAR SOLO DESTACADOS AL INICIO
             const productosDestacados = productos.filter(p => p.destacado === true);
             const contenedor = document.getElementById('productosPorCategoria');
             if (contenedor && productosDestacados.length > 0) {
@@ -417,153 +412,108 @@ const unidadTexto = (unidadDelProducto === 'g' || unidadDelProducto === 'gramo')
         
     } catch (error) {
         console.error("Error cargando productos:", error);
-        // ... resto del código
     }
-}
+  }
   
   verCarrito.addEventListener('click', () => {
     renderizarCarrito();
     carritoModal.show();
   });
   
-  // ==================== FINALIZAR COMPRA CORREGIDO ====================
-  finalizarCompraBtn.addEventListener('click', async () => {
-    if (carrito.length === 0) {
-      mostrarNotificacion('El carrito está vacío. Agrega productos antes de finalizar la compra.', 'warning');
-      return;
-    }
-    
-    const nombre = document.getElementById('nombre').value.trim();
-    const telefono = document.getElementById('telefono').value.trim();
-    const metodoPagoRadio = document.querySelector('input[name="pago"]:checked');
-    const entregaRadio = document.querySelector('input[name="entrega"]:checked');
-    
-    if (!nombre || !telefono) {
-      mostrarNotificacion('Por favor, ingresa tu nombre y teléfono.', 'warning');
-      return;
-    }
-
-    if (!/^\d{10}$/.test(telefono)) {
-      mostrarNotificacion('Por favor, ingresa un teléfono válido de 10 dígitos.', 'warning');
-      return;
-    }
-
-    if (!metodoPagoRadio) {
-      mostrarNotificacion('Por favor, selecciona un método de pago.', 'warning');
-      return;
-    }
-
-    if (!entregaRadio) {
-      mostrarNotificacion('Por favor, selecciona un tipo de entrega.', 'warning');
-      return;
-    }
-
-    const metodoPago = metodoPagoRadio.value;
-    const metodoEntrega = entregaRadio.value;
-    const direccion = document.getElementById('direccion').value.trim() || 'No especificada';
-
-    // ==================== VALIDACIÓN: PAGO AL REPARTIDOR SOLO CON DOMICILIO ====================
-    if (metodoPago === 'efectivo_repartidor' && metodoEntrega !== 'domicilio') {
-        mostrarNotificacion('El pago al repartidor solo está disponible para entregas a domicilio.', 'warning');
-        finalizarCompraBtn.disabled = false;
-        finalizarCompraBtn.innerHTML = 'Finalizar compra';
-        return;
-    }
-    // ===========================================================================================
-
-    // Crear copia del carrito con todos los datos necesarios
-    const productosParaPedido = carrito.map(item => ({
-      id: item.id,
-      nombre: item.nombre,
-      precio: item.precioBase || item.precio,
-      cantidad: item.cantidad,
-      cantidadPersonalizada: item.cantidadPersonalizada || false,
-      cantidadPersonalizadaValor: item.cantidadPersonalizadaValor || null,
-      unidad: item.unidad || (item.cantidadPersonalizada ? 'kg' : 'pz'),
-      codigoBarras: item.codigoBarras || 'N/A'
-    }));
-
-    const totalCompra = carrito.reduce((sum, producto) => sum + (producto.precio * producto.cantidad), 0);
-
-    const pedido = {
-      cliente: {
-        nombre: nombre,
-        telefono: telefono,
-        direccion: direccion
-      },
-      productos: productosParaPedido,
-      total: totalCompra,
-      estado: "pendiente",
-      fecha: new Date(),
-      metodoPago: metodoPago,
-      metodoEntrega: metodoEntrega,
-      estadoPago: metodoPago === 'efectivo_repartidor' ? 'pendiente_entrega' : "pendiente",
-      fechaCreacion: new Date()
-    };
-
-    console.log('Pedido a guardar:', pedido);
-
-    try {
-      finalizarCompraBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Procesando...';
-      finalizarCompraBtn.disabled = true;
-
-      const pedidoId = await fb.guardarPedido(pedido);
-      console.log('Pedido guardado con ID:', pedidoId);
-      
-      if (metodoPago === 'tarjeta') {
-          mostrarNotificacion('⏳ El pago con tarjeta estará disponible próximamente.', 'warning');
-          finalizarCompraBtn.disabled = false;
-          finalizarCompraBtn.innerHTML = 'Finalizar compra';
-          return;
-      } else if (metodoPago === 'transferencia') {
-        await procesarPagoMercadoPago(pedido, pedidoId);
-      } else if (metodoPago === 'efectivo_repartidor') {
-        await finalizarPedidoRepartidor(pedido, pedidoId);
-      } else {
-        await finalizarPedidoSucursal(pedido, pedidoId);
-      }
-
-    } catch (error) {
-      console.error('Error en proceso de compra:', error);
-      mostrarNotificacion('Error al procesar la compra. Por favor, intenta nuevamente.', 'danger');
-      finalizarCompraBtn.innerHTML = 'Finalizar compra';
-      finalizarCompraBtn.disabled = false;
-    }
-  });
-  async function procesarPagoMercadoPago(pedido, pedidoId) {
-    try {
-      const preferencia = await fb.crearPreferenciaMercadoPago({
-        ...pedido,
-        id: pedidoId
-      });
-
-      const pagoData = {
+  // ==================== FUNCIONES DE TRANSFERENCIA (CORREGIDAS - SIN VALIDACIÓN) ====================
+  
+  async function finalizarPedidoTransferenciaSimple(pedido, pedidoId, folio) {
+    const pagoData = {
         pedidoId: pedidoId,
-        metodoPago: pedido.metodoPago,
+        metodoPago: 'transferencia',
         monto: pedido.total,
-        estado: 'pendiente',
-        preferenciaId: preferencia.id,
+        estado: 'pendiente_confirmacion',
+        folioTransferencia: folio,
         fechaCreacion: new Date(),
         cliente: pedido.cliente
-      };
+    };
 
-      await db.collection("pagos").add(pagoData);
-      window.location.href = preferencia.init_point;
+    await db.collection("pagos").add(pagoData);
+    mostrarResumenTransferenciaSimple(pedido, pedidoId, folio);
+    enviarWhatsAppTransferenciaSimple(pedido, pedidoId, folio);
+    
+    setTimeout(() => {
+        if (typeof ticketGenerator !== 'undefined' && ticketGenerator) {
+            ticketGenerator.mostrarTicketModal(pedido, pedidoId);
+        }
+    }, 1000);
+    
+    carrito = [];
+    actualizarCarrito();
+    limpiarFormularioYCerrar();
+  }
 
-    } catch (error) {
-      console.error('Error procesando pago:', error);
-      throw new Error('No se pudo conectar con el sistema de pagos');
+  function mostrarResumenTransferenciaSimple(pedido, pedidoId, folio) {
+    const resumenHTML = `
+        <div class="alert alert-success">
+            <h5>✅ Pedido registrado con transferencia</h5>
+            <p>Gracias por tu compra, ${pedido.cliente.nombre}.</p>
+            <p><strong>Número de pedido:</strong> ${pedidoId}</p>
+            <p><strong>Folio de transferencia:</strong> ${folio || 'Sin folio'}</p>
+            <p><strong>Total:</strong> $${(pedido.total * 1.16).toFixed(2)} (con IVA)</p>
+            <p><strong>Estado:</strong> Pendiente de confirmación del pago.</p>
+            <p>Te contactaremos cuando validemos tu transferencia.</p>
+            <button id="verTicketFinal" class="btn btn-primary mt-2">
+                <i class="fas fa-receipt"></i> Ver comprobante
+            </button>
+        </div>
+    `;
+    const resumenContainer = document.getElementById('resumenCompra');
+    if (resumenContainer) resumenContainer.innerHTML = resumenHTML;
+
+    const btnTicket = document.getElementById('verTicketFinal');
+    if (btnTicket && typeof ticketGenerator !== 'undefined') {
+        btnTicket.addEventListener('click', () => {
+            ticketGenerator.mostrarTicketModal(pedido, pedidoId);
+        });
     }
   }
 
+  function enviarWhatsAppTransferenciaSimple(pedido, pedidoId, folio) {
+    const telefonoTienda = "5524289757";
+    
+    let mensaje = `*NUEVO PEDIDO CON TRANSFERENCIA - ESTRELLA G&C*%0A%0A`;
+    mensaje += `*Pedido #:* ${pedidoId}%0A`;
+    mensaje += `*Cliente:* ${pedido.cliente.nombre}%0A`;
+    mensaje += `*Teléfono:* ${pedido.cliente.telefono}%0A`;
+    
+    if (pedido.metodoEntrega === 'domicilio' && pedido.cliente.direccion) {
+        mensaje += `*Dirección:* ${pedido.cliente.direccion}%0A`;
+    }
+    
+    mensaje += `*Método de pago:* 🏦 Transferencia bancaria%0A`;
+    mensaje += `*Folio transferencia:* ${folio || 'Sin folio'}%0A`;
+    mensaje += `*Tipo de entrega:* ${pedido.metodoEntrega === 'domicilio' ? 'Entrega a domicilio' : 'Recolección en sucursal'}%0A%0A`;
+    
+    mensaje += `*PRODUCTOS:*%0A`;
+    pedido.productos.forEach((producto, index) => {
+        const cantidad = producto.cantidadPersonalizada ? producto.cantidadPersonalizadaValor : producto.cantidad;
+        const unidad = producto.unidad || (producto.cantidadPersonalizada ? 'kg' : 'pz');
+        mensaje += `${index + 1}. ${producto.nombre} - Cantidad: ${cantidad} ${unidad} - $${(producto.precio * cantidad).toFixed(2)}%0A`;
+    });
+    
+    mensaje += `%0A*TOTAL: $${(pedido.total * 1.16).toFixed(2)} (con IVA)*%0A%0A`;
+    mensaje += `*Fecha:* ${new Date().toLocaleString('es-MX')}`;
+    
+    const urlWhatsApp = `https://wa.me/${telefonoTienda}?text=${mensaje}`;
+    window.open(urlWhatsApp, '_blank');
+  }
+
+  // ==================== FUNCIÓN SUCURSAL ====================
+  
   async function finalizarPedidoSucursal(pedido, pedidoId) {
     const pagoData = {
-      pedidoId: pedidoId,
-      metodoPago: 'sucursal',
-      monto: pedido.total,
-      estado: 'pendiente',
-      fechaCreacion: new Date(),
-      cliente: pedido.cliente
+        pedidoId: pedidoId,
+        metodoPago: 'sucursal',
+        monto: pedido.total,
+        estado: 'pendiente',
+        fechaCreacion: new Date(),
+        cliente: pedido.cliente
     };
 
     await db.collection("pagos").add(pagoData);
@@ -571,17 +521,18 @@ const unidadTexto = (unidadDelProducto === 'g' || unidadDelProducto === 'gramo')
     enviarWhatsApp(pedido, pedidoId);
     
     setTimeout(() => {
-      if (typeof ticketGenerator !== 'undefined' && ticketGenerator) {
-        ticketGenerator.mostrarTicketModal(pedido, pedidoId);
-      }
+        if (typeof ticketGenerator !== 'undefined' && ticketGenerator) {
+            ticketGenerator.mostrarTicketModal(pedido, pedidoId);
+        }
     }, 1000);
     
     carrito = [];
     actualizarCarrito();
   }
 
-  // ==================== NUEVA FUNCIÓN: PAGO AL REPARTIDOR ====================
-async function finalizarPedidoRepartidor(pedido, pedidoId) {
+  // ==================== FUNCIÓN PAGO AL REPARTIDOR ====================
+  
+  async function finalizarPedidoRepartidor(pedido, pedidoId) {
     const pagoData = {
         pedidoId: pedidoId,
         metodoPago: 'efectivo_repartidor',
@@ -603,9 +554,9 @@ async function finalizarPedidoRepartidor(pedido, pedidoId) {
     
     carrito = [];
     actualizarCarrito();
-}
+  }
 
-function mostrarResumenCompraRepartidor(pedido, pedidoId) {
+  function mostrarResumenCompraRepartidor(pedido, pedidoId) {
     const totalConIVA = pedido.total * 1.16;
     
     const resumenHTML = `
@@ -649,9 +600,9 @@ function mostrarResumenCompraRepartidor(pedido, pedidoId) {
     setTimeout(() => {
         limpiarFormularioYCerrar();
     }, 15000);
-}
+  }
 
-function enviarWhatsAppRepartidor(pedido, pedidoId) {
+  function enviarWhatsAppRepartidor(pedido, pedidoId) {
     const telefonoTienda = "5524289757";
     
     let mensaje = `*NUEVO PEDIDO - ESTRELLA G&C*%0A%0A`;
@@ -679,7 +630,7 @@ function enviarWhatsAppRepartidor(pedido, pedidoId) {
     
     const urlWhatsApp = `https://wa.me/${telefonoTienda}?text=${mensaje}`;
     window.open(urlWhatsApp, '_blank');
-}
+  }
 
   function mostrarResumenCompra(pedido, pedidoId, metodoPago) {
     const totalConIVA = pedido.total * 1.16;
@@ -783,6 +734,136 @@ function enviarWhatsAppRepartidor(pedido, pedidoId) {
     carritoModal.hide();
     finalizarCompraBtn.innerHTML = 'Finalizar compra';
     finalizarCompraBtn.disabled = false;
+  }
+  
+  // ==================== FINALIZAR COMPRA (CORREGIDO) ====================
+  finalizarCompraBtn.addEventListener('click', async () => {
+    if (carrito.length === 0) {
+      mostrarNotificacion('El carrito está vacío. Agrega productos antes de finalizar la compra.', 'warning');
+      return;
+    }
+    
+    const nombre = document.getElementById('nombre').value.trim();
+    const telefono = document.getElementById('telefono').value.trim();
+    const metodoPagoRadio = document.querySelector('input[name="pago"]:checked');
+    const entregaRadio = document.querySelector('input[name="entrega"]:checked');
+    
+    if (!nombre || !telefono) {
+      mostrarNotificacion('Por favor, ingresa tu nombre y teléfono.', 'warning');
+      return;
+    }
+
+    if (!/^\d{10}$/.test(telefono)) {
+      mostrarNotificacion('Por favor, ingresa un teléfono válido de 10 dígitos.', 'warning');
+      return;
+    }
+
+    if (!metodoPagoRadio) {
+      mostrarNotificacion('Por favor, selecciona un método de pago.', 'warning');
+      return;
+    }
+
+    if (!entregaRadio) {
+      mostrarNotificacion('Por favor, selecciona un tipo de entrega.', 'warning');
+      return;
+    }
+
+    const metodoPago = metodoPagoRadio.value;
+    const metodoEntrega = entregaRadio.value;
+    const direccion = document.getElementById('direccion').value.trim() || 'No especificada';
+
+    if (metodoPago === 'efectivo_repartidor' && metodoEntrega !== 'domicilio') {
+        mostrarNotificacion('El pago al repartidor solo está disponible para entregas a domicilio.', 'warning');
+        finalizarCompraBtn.disabled = false;
+        finalizarCompraBtn.innerHTML = 'Finalizar compra';
+        return;
+    }
+
+    const productosParaPedido = carrito.map(item => ({
+      id: item.id,
+      nombre: item.nombre,
+      precio: item.precioBase || item.precio,
+      cantidad: item.cantidad,
+      cantidadPersonalizada: item.cantidadPersonalizada || false,
+      cantidadPersonalizadaValor: item.cantidadPersonalizadaValor || null,
+      unidad: item.unidad || (item.cantidadPersonalizada ? 'kg' : 'pz'),
+      codigoBarras: item.codigoBarras || 'N/A'
+    }));
+
+    const totalCompra = carrito.reduce((sum, producto) => sum + (producto.precio * producto.cantidad), 0);
+
+    const pedido = {
+      cliente: {
+        nombre: nombre,
+        telefono: telefono,
+        direccion: direccion
+      },
+      productos: productosParaPedido,
+      total: totalCompra,
+      estado: "pendiente",
+      fecha: new Date(),
+      metodoPago: metodoPago,
+      metodoEntrega: metodoEntrega,
+      estadoPago: metodoPago === 'efectivo_repartidor' ? 'pendiente_entrega' : "pendiente",
+      fechaCreacion: new Date()
+    };
+
+    console.log('Pedido a guardar:', pedido);
+
+    try {
+      finalizarCompraBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Procesando...';
+      finalizarCompraBtn.disabled = true;
+
+      const pedidoId = await fb.guardarPedido(pedido);
+      console.log('Pedido guardado con ID:', pedidoId);
+      
+      if (metodoPago === 'tarjeta') {
+          mostrarNotificacion('⏳ El pago con tarjeta estará disponible próximamente.', 'warning');
+          finalizarCompraBtn.disabled = false;
+          finalizarCompraBtn.innerHTML = 'Finalizar compra';
+          return;
+      } else if (metodoPago === 'transferencia') {
+          // ✅ SIN VALIDACIÓN - ACEPTA CUALQUIER FOLIO O VACÍO
+          const folio = document.getElementById('folioTransferencia')?.value.trim() || 'Sin folio';
+          await finalizarPedidoTransferenciaSimple(pedido, pedidoId, folio);
+      } else if (metodoPago === 'efectivo_repartidor') {
+        await finalizarPedidoRepartidor(pedido, pedidoId);
+      } else {
+        await finalizarPedidoSucursal(pedido, pedidoId);
+      }
+
+    } catch (error) {
+      console.error('Error en proceso de compra:', error);
+      mostrarNotificacion('Error al procesar la compra. Por favor, intenta nuevamente.', 'danger');
+      finalizarCompraBtn.innerHTML = 'Finalizar compra';
+      finalizarCompraBtn.disabled = false;
+    }
+  });
+  
+  async function procesarPagoMercadoPago(pedido, pedidoId) {
+    try {
+      const preferencia = await fb.crearPreferenciaMercadoPago({
+        ...pedido,
+        id: pedidoId
+      });
+
+      const pagoData = {
+        pedidoId: pedidoId,
+        metodoPago: pedido.metodoPago,
+        monto: pedido.total,
+        estado: 'pendiente',
+        preferenciaId: preferencia.id,
+        fechaCreacion: new Date(),
+        cliente: pedido.cliente
+      };
+
+      await db.collection("pagos").add(pagoData);
+      window.location.href = preferencia.init_point;
+
+    } catch (error) {
+      console.error('Error procesando pago:', error);
+      throw new Error('No se pudo conectar con el sistema de pagos');
+    }
   }
   
   // Inicializar
